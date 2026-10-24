@@ -40,8 +40,14 @@ CREATE INDEX IF NOT EXISTS idx_responses_project ON responses(project_id);
 CREATE INDEX IF NOT EXISTS idx_forms_project ON forms(project_id);
 CREATE INDEX IF NOT EXISTS idx_users_org ON users(org_id);
 CREATE INDEX IF NOT EXISTS idx_invite_members_token ON org_invite_members(token_id);").map_err(|e|e.to_string())?;
-    let _ = db.execute("ALTER TABLE org_invite_tokens ADD COLUMN token_code TEXT", []);
-    let _ = db.execute("ALTER TABLE users ADD COLUMN org_id TEXT REFERENCES organizations(id)", []);
+    let _ = db.execute(
+        "ALTER TABLE org_invite_tokens ADD COLUMN token_code TEXT",
+        [],
+    );
+    let _ = db.execute(
+        "ALTER TABLE users ADD COLUMN org_id TEXT REFERENCES organizations(id)",
+        [],
+    );
     let count: i64 = db
         .query_row("SELECT count(*) FROM users", [], |r| r.get(0))
         .map_err(|e| e.to_string())?;
@@ -54,7 +60,11 @@ CREATE INDEX IF NOT EXISTS idx_invite_members_token ON org_invite_members(token_
         let uid = Uuid::new_v4().to_string();
         let org_id = Uuid::new_v4().to_string();
         let now = chrono::Utc::now().to_rfc3339();
-        db.execute("INSERT INTO organizations(id,name,created_at) VALUES(?1,?2,?3)",params![org_id,"Default Organization",now]).map_err(|e|e.to_string())?;
+        db.execute(
+            "INSERT INTO organizations(id,name,created_at) VALUES(?1,?2,?3)",
+            params![org_id, "Default Organization", now],
+        )
+        .map_err(|e| e.to_string())?;
         db.execute("INSERT INTO users(id,org_id,login_id,name,role,password_hash,active) VALUES(?1,?2,?3,?4,'admin',?5,1)",params![uid,org_id,login,name,hash]).map_err(|e|e.to_string())?;
         seed(&db, &uid)?;
     }
@@ -237,7 +247,11 @@ pub fn register_org(
     };
     db.execute(
         "INSERT INTO projects(id,owner_id,data) VALUES(?1,?2,?3)",
-        params![proj_id, uid, serde_json::to_string(&default_proj).map_err(|e| e.to_string())?],
+        params![
+            proj_id,
+            uid,
+            serde_json::to_string(&default_proj).map_err(|e| e.to_string())?
+        ],
     )
     .map_err(|e| e.to_string())?;
     db.execute(
@@ -267,7 +281,9 @@ pub fn create_org_invite(
         )
         .map_err(|e| e.to_string())?;
     if existing > 0 {
-        return Err("This invitation code is already in use. Please choose a different code.".into());
+        return Err(
+            "This invitation code is already in use. Please choose a different code.".into(),
+        );
     }
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
@@ -300,7 +316,8 @@ pub fn join_via_org_invite(
         )
         .optional()
         .map_err(|e| e.to_string())?;
-    let (token_id, org_id, _label) = row.ok_or_else(|| "Invalid or expired invitation code.".to_string())?;
+    let (token_id, org_id, _label) =
+        row.ok_or_else(|| "Invalid or expired invitation code.".to_string())?;
     let existing: i64 = db
         .query_row(
             "SELECT count(*) FROM users WHERE login_id=?1",
@@ -334,9 +351,9 @@ pub fn join_via_org_invite(
     .map_err(|e| e.to_string())?;
 
     // Auto-assign new surveyor to all projects belonging to this org
-    let mut p_stmt = db.prepare(
-        "SELECT p.id FROM projects p JOIN users u ON u.id=p.owner_id WHERE u.org_id=?1",
-    ).map_err(|e| e.to_string())?;
+    let mut p_stmt = db
+        .prepare("SELECT p.id FROM projects p JOIN users u ON u.id=p.owner_id WHERE u.org_id=?1")
+        .map_err(|e| e.to_string())?;
     let pids: Vec<String> = p_stmt
         .query_map([&org_id], |r| r.get(0))
         .map_err(|e| e.to_string())?
@@ -353,7 +370,13 @@ pub fn join_via_org_invite(
         .query_row(
             "SELECT id,name,created_at FROM organizations WHERE id=?1",
             [&org_id],
-            |r| Ok(crate::models::Org { id: r.get(0)?, name: r.get(1)?, created_at: r.get(2)? }),
+            |r| {
+                Ok(crate::models::Org {
+                    id: r.get(0)?,
+                    name: r.get(1)?,
+                    created_at: r.get(2)?,
+                })
+            },
         )
         .map_err(|e| e.to_string())?;
     let user = crate::models::User {
