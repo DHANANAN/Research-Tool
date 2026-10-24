@@ -147,7 +147,10 @@ pub fn router(state: AppState) -> Router {
         .route("/api/projects/{id}/export.xlsx", get(export))
         .route("/api/projects/{id}/import", post(import_text))
         .route("/api/projects/{id}/import-pdf", post(import_pdf))
-        .route("/api/org/invite", get(org_invite_list).post(org_invite_create))
+        .route(
+            "/api/org/invite",
+            get(org_invite_list).post(org_invite_create),
+        )
         .route(
             "/api/{*path}",
             get(|| async {
@@ -320,8 +323,15 @@ async fn bootstrap(State(state): State<AppState>, headers: HeaderMap) -> ApiResu
         db.query_row(
             "SELECT id,name,created_at FROM organizations WHERE id=?1",
             [oid],
-            |r| Ok(crate::models::Org { id: r.get(0)?, name: r.get(1)?, created_at: r.get(2)? }),
-        ).optional()?
+            |r| {
+                Ok(crate::models::Org {
+                    id: r.get(0)?,
+                    name: r.get(1)?,
+                    created_at: r.get(2)?,
+                })
+            },
+        )
+        .optional()?
     } else {
         None
     };
@@ -905,9 +915,8 @@ async fn register(
     bounded(&input.name, "Your name", 200)?;
     let hash = auth::hash_password(&input.password).map_err(invalid)?;
     let db = lock(&state)?;
-    let (uid, org_id) =
-        db::register_org(&db, &input.org_name, &input.login_id, &input.name, &hash)
-            .map_err(invalid)?;
+    let (uid, org_id) = db::register_org(&db, &input.org_name, &input.login_id, &input.name, &hash)
+        .map_err(invalid)?;
     drop(db);
     let u = User {
         id: uid,
@@ -929,10 +938,7 @@ struct JoinInput {
     name: String,
     password: String,
 }
-async fn join(
-    State(state): State<AppState>,
-    Json(input): Json<JoinInput>,
-) -> ApiResult<Response> {
+async fn join(State(state): State<AppState>, Json(input): Json<JoinInput>) -> ApiResult<Response> {
     if input.token.len() > 256 || input.token.trim().is_empty() {
         return Err(invalid("Please provide a valid invitation code."));
     }
@@ -940,9 +946,8 @@ async fn join(
     bounded(&input.name, "Your name", 200)?;
     let hash = auth::hash_password(&input.password).map_err(invalid)?;
     let db = lock(&state)?;
-    let (u, org) =
-        db::join_via_org_invite(&db, &input.token, &input.login_id, &input.name, &hash)
-            .map_err(invalid)?;
+    let (u, org) = db::join_via_org_invite(&db, &input.token, &input.login_id, &input.name, &hash)
+        .map_err(invalid)?;
     drop(db);
     let cookie = auth::session(&state, &u).map_err(invalid)?;
     Ok((
@@ -979,7 +984,9 @@ async fn org_invite_list(
             let use_count: i64 = r.get(3)?;
             let created_at: String = r.get(4)?;
             let created_by: String = r.get(5)?;
-            Ok((token_id, token_code, label, use_count, created_at, created_by))
+            Ok((
+                token_id, token_code, label, use_count, created_at, created_by,
+            ))
         })?
         .collect::<Result<Vec<_>, _>>()?;
 
@@ -1050,6 +1057,9 @@ async fn org_invite_create(
     };
 
     let db = lock(&state)?;
-    let (id, final_code) = db::create_org_invite(&db, org_id, &u.id, &input.label, &code_to_use).map_err(invalid)?;
-    Ok(Json(json!({ "id": id, "code": final_code, "token": final_code, "label": input.label })))
+    let (id, final_code) =
+        db::create_org_invite(&db, org_id, &u.id, &input.label, &code_to_use).map_err(invalid)?;
+    Ok(Json(
+        json!({ "id": id, "code": final_code, "token": final_code, "label": input.label }),
+    ))
 }
