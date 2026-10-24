@@ -128,6 +128,8 @@ pub fn router(state: AppState) -> Router {
         .route("/api/auth/login", post(login))
         .route("/api/auth/logout", post(logout))
         .route("/api/auth/activate", post(activate))
+        .route("/api/auth/register", post(register))
+        .route("/api/auth/join", post(join))
         .route("/api/bootstrap", get(bootstrap))
         .route("/api/projects", post(create_project))
         .route("/api/projects/{id}", put(update_project))
@@ -145,6 +147,7 @@ pub fn router(state: AppState) -> Router {
         .route("/api/projects/{id}/export.xlsx", get(export))
         .route("/api/projects/{id}/import", post(import_text))
         .route("/api/projects/{id}/import-pdf", post(import_pdf))
+        .route("/api/org/invite", get(org_invite_list).post(org_invite_create))
         .route(
             "/api/{*path}",
             get(|| async {
@@ -228,7 +231,7 @@ async fn login(State(state): State<AppState>, Json(input): Json<Login>) -> ApiRe
             ));
         }
         db.query_row(
-            "SELECT id,login_id,name,role,password_hash FROM users WHERE login_id=?1 AND active=1",
+            "SELECT id,login_id,name,role,org_id,password_hash FROM users WHERE login_id=?1 AND active=1",
             [&input.login_id],
             |r| {
                 Ok((
@@ -237,8 +240,9 @@ async fn login(State(state): State<AppState>, Json(input): Json<Login>) -> ApiRe
                         login_id: r.get(1)?,
                         name: r.get(2)?,
                         role: r.get(3)?,
+                        org_id: r.get(4)?,
                     },
-                    r.get(4)?,
+                    r.get(5)?,
                 ))
             },
         )
@@ -298,7 +302,7 @@ async fn activate(
     let hash = auth::hash_password(&input.password).map_err(invalid)?;
     let u = {
         let db = lock(&state)?;
-        let found:Option<User>=db.query_row("SELECT id,login_id,name,role FROM users WHERE login_id=?1 AND active=0 AND activation_hash=?2 AND activation_expires>?3",params![input.login_id,auth::digest(&input.activation_code),chrono::Utc::now().timestamp()],|r|Ok(User{id:r.get(0)?,login_id:r.get(1)?,name:r.get(2)?,role:r.get(3)?})).optional()?;
+        let found:Option<User>=db.query_row("SELECT id,login_id,name,role,org_id FROM users WHERE login_id=?1 AND active=0 AND activation_hash=?2 AND activation_expires>?3",params![input.login_id,auth::digest(&input.activation_code),chrono::Utc::now().timestamp()],|r|Ok(User{id:r.get(0)?,login_id:r.get(1)?,name:r.get(2)?,role:r.get(3)?,org_id:r.get(4)?})).optional()?;
         let u = found.ok_or(ApiError(
             StatusCode::UNAUTHORIZED,
             "Invalid or expired activation code.".into(),
@@ -312,6 +316,15 @@ async fn activate(
 async fn bootstrap(State(state): State<AppState>, headers: HeaderMap) -> ApiResult<Json<Value>> {
     let u = user(&state, &headers)?;
     let db = lock(&state)?;
+    let org: Option<crate::models::Org> = if let Some(ref oid) = u.org_id {
+        db.query_row(
+            "SELECT id,name,created_at FROM organizations WHERE id=?1",
+            [oid],
+            |r| Ok(crate::models::Org { id: r.get(0)?, name: r.get(1)?, created_at: r.get(2)? }),
+        ).optional()?
+    } else {
+        None
+    };
     let mut stmt=db.prepare("SELECT data FROM projects WHERE owner_id=?1 OR id IN (SELECT project_id FROM memberships WHERE user_id=?1) ORDER BY rowid")?;
     let raw = stmt
         .query_map([&u.id], |r| r.get::<_, String>(0))?
@@ -343,7 +356,7 @@ async fn bootstrap(State(state): State<AppState>, headers: HeaderMap) -> ApiResu
         }
     }
     Ok(Json(
-        json!({"user":u,"projects":projects,"forms":forms,"stats":{"responses":count,"surveyors":surveyors.len()}}),
+        json!({"user":u,"org":org,"projects":projects,"forms":forms,"stats":{"responses":count,"surveyors":surveyors.len()}}),
     ))
 }
 #[derive(Deserialize)]
@@ -428,7 +441,7 @@ async fn members(
     let u = user(&state, &headers)?;
     let db = lock(&state)?;
     access(&db, &u, &id, true)?;
-    let mut stmt=db.prepare("SELECT u.id,u.login_id,u.name,u.role FROM users u JOIN memberships m ON m.user_id=u.id WHERE m.project_id=?1 ORDER BY u.name")?;
+    let mut stmt=db.prepare("SELECT u.id,u.login_id,u.name,u.role,u.org_id FROM users u JOIN memberships m ON m.user_id=u.id WHERE m.project_id=?1 ORDER BY u.name")?;
     let users = stmt
         .query_map([id], |r| {
             Ok(User {
@@ -436,6 +449,7 @@ async fn members(
                 login_id: r.get(1)?,
                 name: r.get(2)?,
                 role: r.get(3)?,
+                org_id: r.get(4)?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
@@ -461,12 +475,13 @@ async fn create_member(
         login_id: input.login_id,
         name: input.name,
         role: "surveyor".into(),
+        org_id: u.org_id.clone(),
     };
     let mut db = lock(&state)?;
     access(&db, &u, &id, true)?;
     let existing: Option<User> = db
         .query_row(
-            "SELECT id,login_id,name,role FROM users WHERE login_id=?1",
+            "SELECT id,login_id,name,role,org_id FROM users WHERE login_id=?1",
             [&member.login_id],
             |r| {
                 Ok(User {
@@ -474,6 +489,7 @@ async fn create_member(
                     login_id: r.get(1)?,
                     name: r.get(2)?,
                     role: r.get(3)?,
+                    org_id: r.get(4)?,
                 })
             },
         )
@@ -870,4 +886,170 @@ async fn import_pdf(
     Ok(Json(serde_json::to_value(crate::import::parse_text(
         &text,
     ))?))
+}
+
+// ── Self-registration ──────────────────────────────────────────────────────
+#[derive(Deserialize)]
+struct RegisterInput {
+    org_name: String,
+    login_id: String,
+    name: String,
+    password: String,
+}
+async fn register(
+    State(state): State<AppState>,
+    Json(input): Json<RegisterInput>,
+) -> ApiResult<Response> {
+    bounded(&input.org_name, "Organisation name", 200)?;
+    bounded(&input.login_id, "Login ID", 100)?;
+    bounded(&input.name, "Your name", 200)?;
+    let hash = auth::hash_password(&input.password).map_err(invalid)?;
+    let db = lock(&state)?;
+    let (uid, org_id) =
+        db::register_org(&db, &input.org_name, &input.login_id, &input.name, &hash)
+            .map_err(invalid)?;
+    drop(db);
+    let u = User {
+        id: uid,
+        org_id: Some(org_id),
+        login_id: input.login_id,
+        name: input.name,
+        role: "admin".into(),
+    };
+    let cookie = auth::session(&state, &u).map_err(invalid)?;
+    Ok(([(header::SET_COOKIE, cookie)], Json(json!({ "user": u }))).into_response())
+}
+
+// ── Join via org invite token / code ─────────────────────────────────────────
+#[derive(Deserialize)]
+struct JoinInput {
+    #[serde(alias = "code")]
+    token: String,
+    login_id: String,
+    name: String,
+    password: String,
+}
+async fn join(
+    State(state): State<AppState>,
+    Json(input): Json<JoinInput>,
+) -> ApiResult<Response> {
+    if input.token.len() > 256 || input.token.trim().is_empty() {
+        return Err(invalid("Please provide a valid invitation code."));
+    }
+    bounded(&input.login_id, "Login ID", 100)?;
+    bounded(&input.name, "Your name", 200)?;
+    let hash = auth::hash_password(&input.password).map_err(invalid)?;
+    let db = lock(&state)?;
+    let (u, org) =
+        db::join_via_org_invite(&db, &input.token, &input.login_id, &input.name, &hash)
+            .map_err(invalid)?;
+    drop(db);
+    let cookie = auth::session(&state, &u).map_err(invalid)?;
+    Ok((
+        [(header::SET_COOKIE, cookie)],
+        Json(json!({ "user": u, "org": org })),
+    )
+        .into_response())
+}
+
+// ── Org invite token management ────────────────────────────────────────────
+async fn org_invite_list(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> ApiResult<Json<Value>> {
+    let u = user(&state, &headers)?;
+    admin(&u)?;
+    let org_id = u.org_id.as_deref().ok_or_else(|| {
+        ApiError(
+            StatusCode::BAD_REQUEST,
+            "Your account is not associated with an organisation.".into(),
+        )
+    })?;
+    let db = lock(&state)?;
+    let mut stmt = db.prepare(
+        "SELECT t.id, t.token_code, t.label, t.use_count, t.created_at, u.name \
+         FROM org_invite_tokens t JOIN users u ON u.id=t.created_by \
+         WHERE t.org_id=?1 ORDER BY t.rowid DESC",
+    )?;
+    let tokens = stmt
+        .query_map([org_id], |r| {
+            let token_id: String = r.get(0)?;
+            let token_code: Option<String> = r.get(1).ok();
+            let label: String = r.get(2)?;
+            let use_count: i64 = r.get(3)?;
+            let created_at: String = r.get(4)?;
+            let created_by: String = r.get(5)?;
+            Ok((token_id, token_code, label, use_count, created_at, created_by))
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let mut result = Vec::new();
+    for (tid, tcode, label, use_count, created_at, created_by) in tokens {
+        let mut m_stmt = db.prepare(
+            "SELECT u.id, u.name, u.login_id, m.joined_at \
+             FROM org_invite_members m JOIN users u ON u.id=m.user_id \
+             WHERE m.token_id=?1 ORDER BY m.rowid DESC",
+        )?;
+        let members: Vec<Value> = m_stmt
+            .query_map([&tid], |r| {
+                Ok(json!({
+                    "id": r.get::<_, String>(0)?,
+                    "name": r.get::<_, String>(1)?,
+                    "login_id": r.get::<_, String>(2)?,
+                    "joined_at": r.get::<_, String>(3)?,
+                }))
+            })?
+            .filter_map(|r| r.ok())
+            .collect();
+
+        let display_code = tcode.unwrap_or_else(|| "N/A".into());
+        result.push(json!({
+            "id": tid,
+            "code": display_code,
+            "token": display_code,
+            "label": label,
+            "use_count": use_count,
+            "created_at": created_at,
+            "created_by": created_by,
+            "members": members,
+        }));
+    }
+    Ok(Json(json!({ "tokens": result })))
+}
+
+#[derive(Deserialize)]
+struct OrgInviteInput {
+    label: String,
+    #[serde(default)]
+    code: Option<String>,
+}
+async fn org_invite_create(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(input): Json<OrgInviteInput>,
+) -> ApiResult<Json<Value>> {
+    let u = user(&state, &headers)?;
+    admin(&u)?;
+    bounded(&input.label, "Invite label", 200)?;
+    let org_id = u.org_id.as_deref().ok_or_else(|| {
+        ApiError(
+            StatusCode::BAD_REQUEST,
+            "Your account is not associated with an organisation.".into(),
+        )
+    })?;
+
+    let code_to_use = match input.code {
+        Some(ref c) if !c.trim().is_empty() => {
+            bounded(c, "Invite code", 50)?;
+            c.trim().to_uppercase()
+        }
+        _ => {
+            let secret = auth::random_secret();
+            format!("INV-{}", &secret[0..8].to_uppercase())
+        }
+    };
+
+    let db = lock(&state)?;
+    let (id, final_code) = db::create_org_invite(&db, org_id, &u.id, &input.label, &code_to_use).map_err(invalid)?;
+    Ok(Json(json!({ "id": id, "code": final_code, "token": final_code, "label": input.label })))
 }

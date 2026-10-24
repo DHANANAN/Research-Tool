@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 
 export default defineConfig({
+  css: { postcss: {} },
   server: { proxy: { "/api": "http://127.0.0.1:3000" } },
   plugins: [
     {

@@ -45,7 +45,7 @@ pub fn token(headers: &HeaderMap) -> Option<String> {
 pub fn current_user(state: &AppState, headers: &HeaderMap) -> Option<User> {
     let token = token(headers)?;
     let db = state.db.lock().ok()?;
-    db.query_row("SELECT u.id,u.login_id,u.name,u.role FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=?1 AND s.expires>?2 AND u.active=1",params![digest(&token),chrono::Utc::now().timestamp()], |r|Ok(User{id:r.get(0)?,login_id:r.get(1)?,name:r.get(2)?,role:r.get(3)?})).ok()
+    db.query_row("SELECT u.id,u.login_id,u.name,u.role,u.org_id FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=?1 AND s.expires>?2 AND u.active=1",params![digest(&token),chrono::Utc::now().timestamp()], |r|Ok(User{id:r.get(0)?,login_id:r.get(1)?,name:r.get(2)?,role:r.get(3)?,org_id:r.get(4)?})).ok()
 }
 pub fn session(state: &AppState, user: &User) -> Result<HeaderValue, String> {
     let raw = random_secret();

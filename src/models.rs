@@ -2,12 +2,31 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
 
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Org {
+    pub id: String,
+    pub name: String,
+    pub created_at: String,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct OrgInviteToken {
+    pub id: String,
+    pub org_id: String,
+    pub token: String,
+    pub label: String,
+    pub created_by_name: String,
+    pub use_count: i64,
+    pub created_at: String,
+}
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct User {
     pub id: String,
     pub login_id: String,
     pub name: String,
     pub role: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub org_id: Option<String>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Project {

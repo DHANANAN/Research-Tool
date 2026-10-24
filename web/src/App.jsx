@@ -769,36 +769,38 @@ function Brand() {
   );
 }
 function Auth({ onSuccess, online, message }) {
-  const [activate, setActivate] = useState(false),
+  const [tab, setTab] = useState("login"),
     [values, setValues] = useState({
-      login_id: "",
-      password: "",
-      activation_code: "",
+      login_id: "", password: "", activation_code: "",
+      org_name: "", name: "", token: "",
     }),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
+  const set = (k) => (e) => setValues((v) => ({ ...v, [k]: e.target.value }));
+  const switchTab = (t) => { setTab(t); setError(""); };
   const submit = async (e) => {
     e.preventDefault();
-    if (!online) {
-      setError(
-        "First sign-in and account activation require an internet connection.",
-      );
-      return;
-    }
-    setBusy(true);
-    setError("");
+    if (!online) { setError("First sign-in and account activation require an internet connection."); return; }
+    setBusy(true); setError("");
     try {
-      await api(`/api/auth/${activate ? "activate" : "login"}`, {
-        method: "POST",
-        body: values,
-      });
-      setValues({ login_id: "", password: "", activation_code: "" });
+      const path =
+        tab === "login" ? "/api/auth/login" :
+        tab === "activate" ? "/api/auth/activate" :
+        tab === "register" ? "/api/auth/register" :
+        "/api/auth/join";
+      const body =
+        tab === "login"
+          ? { login_id: values.login_id, password: values.password }
+          : tab === "activate"
+          ? { login_id: values.login_id, activation_code: values.activation_code, password: values.password }
+          : tab === "register"
+          ? { org_name: values.org_name, login_id: values.login_id, name: values.name, password: values.password }
+          : { token: values.token, login_id: values.login_id, name: values.name, password: values.password };
+      await api(path, { method: "POST", body });
+      setValues({ login_id: "", password: "", activation_code: "", org_name: "", name: "", token: "" });
       await onSuccess();
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setBusy(false);
-    }
+    } catch (e) { setError(e.message); }
+    finally { setBusy(false); }
   };
   return (
     <div className="auth-page">
@@ -806,137 +808,87 @@ function Auth({ onSuccess, online, message }) {
         <Brand />
         <div className="auth-story-main">
           <span className="eyebrow">RESEARCH THAT REACHES PEOPLE</span>
-          <h1>
-            Every voice.
-            <br />A meaningful
-            <br />
-            <em>part of the story.</em>
-          </h1>
-          <p>
-            A connected workspace to build thoughtful questionnaires, listen in
-            the field, and turn answers into useful research.
-          </p>
+          <h1>Every voice.<br />A meaningful<br /><em>part of the story.</em></h1>
+          <p>A connected workspace to build thoughtful questionnaires, listen in the field, and turn answers into useful research.</p>
           <div className="auth-principles">
-            <span>
-              <ShieldCheck size={16} />
-              Researcher owned
-            </span>
-            <span>
-              <WifiOff size={16} />
-              Field ready
-            </span>
-            <span>
-              <Globe2 size={16} />
-              Open source
-            </span>
+            <span><ShieldCheck size={16} /> Researcher owned</span>
+            <span><WifiOff size={16} /> Field ready</span>
+            <span><Globe2 size={16} /> Open source</span>
           </div>
         </div>
-        <span className="auth-footnote">
-          Built for real questions. Designed for the people behind them.
-        </span>
+        <span className="auth-footnote">Built for real questions. Designed for the people behind them.</span>
         <div className="auth-orbit orbit-1" />
         <div className="auth-orbit orbit-2" />
       </div>
       <div className="auth-form-area">
-        <span className="pilot-badge">
-          <span />
-          Development pilot
-        </span>
+        <span className="pilot-badge"><span />Development pilot</span>
+        <div className="auth-tabs">
+          <button type="button" className={tab === "login" ? "active" : ""} onClick={() => switchTab("login")}>Sign in</button>
+          <button type="button" className={tab === "activate" ? "active" : ""} onClick={() => switchTab("activate")}>Activate</button>
+          <button type="button" className={tab === "register" ? "active" : ""} onClick={() => switchTab("register")}>Create org</button>
+          <button type="button" className={tab === "join" ? "active" : ""} onClick={() => switchTab("join")}>Join via invite</button>
+        </div>
         <form className="auth-form" onSubmit={submit}>
           <div className="auth-icon">
-            <BookOpen size={28} />
+            {tab === "register" ? <Plus size={28} /> : tab === "join" ? <Users size={28} /> : <BookOpen size={28} />}
           </div>
           <span className="eyebrow">YOUR RESEARCH WORKSPACE</span>
-          <h2>{activate ? "Join your research team." : "Welcome back."}</h2>
+          <h2>
+            {tab === "login" ? "Welcome back." :
+             tab === "activate" ? "Join your research team." :
+             tab === "register" ? "Create your organisation." :
+             "Join an organisation."}
+          </h2>
           <p>
-            {activate
+            {tab === "login"
+              ? "Sign in to continue your study, manage questionnaires, or collect in the field."
+              : tab === "activate"
               ? "Use the invitation your administrator shared with you and choose your own password."
-              : "Sign in to continue your study, manage questionnaires, or collect in the field."}
+              : tab === "register"
+              ? "Start fresh — create your organisation and administrator account in seconds."
+              : "Use an invite token shared by your organisation admin to join and set your own password."}
           </p>
-          {(error || message?.error) && (
-            <Notice tone="danger">{error || message.text}</Notice>
-          )}
-          <label>
-            Login ID
-            <input
-              required
-              autoComplete="username"
-              value={values.login_id}
-              onChange={(e) =>
-                setValues({ ...values, login_id: e.target.value })
-              }
-              placeholder="Your administrator-assigned ID"
-            />
-          </label>
-          {activate && (
-            <label>
-              One-time activation code
-              <input
-                required
-                autoComplete="off"
-                value={values.activation_code}
-                onChange={(e) =>
-                  setValues({ ...values, activation_code: e.target.value })
-                }
-                placeholder="Enter your invitation code"
-              />
-            </label>
-          )}
-          <label>
-            {activate ? "Choose a password" : "Password"}
-            <input
-              required
-              type="password"
-              minLength={activate ? 12 : undefined}
-              autoComplete={activate ? "new-password" : "current-password"}
-              value={values.password}
-              onChange={(e) =>
-                setValues({ ...values, password: e.target.value })
-              }
-              placeholder={
-                activate ? "At least 12 characters" : "Enter your password"
-              }
-            />
-          </label>
-          <Button
-            type="submit"
-            disabled={busy || !online}
-            icon={busy ? LoaderCircle : ArrowRight}
-          >
-            {busy
-              ? "Opening workspace…"
-              : activate
-                ? "Activate account"
-                : "Sign in to workspace"}
+          {(error || message?.error) && <Notice tone="danger">{error || message.text}</Notice>}
+
+          {tab === "login" && (<>
+            <label>Login ID<input required autoComplete="username" value={values.login_id} onChange={set("login_id")} placeholder="Your login ID" /></label>
+            <label>Password<input required type="password" autoComplete="current-password" value={values.password} onChange={set("password")} placeholder="Enter your password" /></label>
+          </>)}
+
+          {tab === "activate" && (<>
+            <label>Login ID<input required autoComplete="username" value={values.login_id} onChange={set("login_id")} placeholder="Your administrator-assigned ID" /></label>
+            <label>One-time activation code<input required autoComplete="off" value={values.activation_code} onChange={set("activation_code")} placeholder="Enter your invitation code" /></label>
+            <label>Choose a password<input required type="password" minLength={12} autoComplete="new-password" value={values.password} onChange={set("password")} placeholder="At least 12 characters" /></label>
+          </>)}
+
+          {tab === "register" && (<>
+            <label>Organisation name<input required value={values.org_name} onChange={set("org_name")} placeholder="Your institution or research group" /></label>
+            <label>Your full name<input required value={values.name} onChange={set("name")} placeholder="Administrator name" /></label>
+            <label>Choose a login ID<input required autoComplete="username" value={values.login_id} onChange={set("login_id")} placeholder="e.g. admin or your email" /></label>
+            <label>Password<input required type="password" minLength={12} autoComplete="new-password" value={values.password} onChange={set("password")} placeholder="At least 12 characters" /></label>
+          </>)}
+
+          {tab === "join" && (<>
+            <label>Invitation code<input required autoComplete="off" value={values.token} onChange={set("token")} placeholder="e.g. INV-A7K9-M3Q2 or code from your administrator" /></label>
+            <label>Your full name<input required value={values.name} onChange={set("name")} placeholder="Your name" /></label>
+            <label>Choose a login ID<input required autoComplete="username" value={values.login_id} onChange={set("login_id")} placeholder="e.g. your email or surveyor ID" /></label>
+            <label>Choose a password<input required type="password" minLength={12} autoComplete="new-password" value={values.password} onChange={set("password")} placeholder="At least 12 characters" /></label>
+          </>)}
+
+          <Button type="submit" disabled={busy || !online} icon={busy ? LoaderCircle : ArrowRight}>
+            {busy ? "Opening workspace…" :
+             tab === "login" ? "Sign in to workspace" :
+             tab === "activate" ? "Activate account" :
+             tab === "register" ? "Create organisation" :
+             "Join organisation"}
           </Button>
-          <button
-            type="button"
-            className="text-button auth-toggle"
-            onClick={() => {
-              setActivate(!activate);
-              setError("");
-            }}
-          >
-            {activate
-              ? "Already activated? Sign in"
-              : "Have an invitation? Activate your account"}
-          </button>
-          {!online && (
-            <Notice tone="warning">
-              Connect to sign in. Offline work is available only after this
-              device has been signed in and forms downloaded.
-            </Notice>
-          )}
+          {!online && <Notice tone="warning">Connect to sign in. Offline work is available only after this device has been signed in and forms downloaded.</Notice>}
           <div className="auth-help">
             <CircleHelp size={16} />
-            <span>
-              Need access or a password reset? Contact your study administrator.
-            </span>
+            <span>Need access or a password reset? Contact your study administrator.</span>
           </div>
         </form>
-        <span className="auth-copyright">
-          Research-Tool · An open-source research workspace
-        </span>
+        <span className="auth-copyright">Research-Tool · An open-source research workspace</span>
       </div>
     </div>
   );
@@ -3061,41 +3013,55 @@ function Team({ project, online, notify, refresh }) {
   const [members, setMembers] = useState([]),
     [inviteOpen, setInviteOpen] = useState(false),
     [invitation, setInvitation] = useState(null),
+    [orgInvites, setOrgInvites] = useState([]),
+    [newOrgInvite, setNewOrgInvite] = useState(null),
+    [orgInviteLabel, setOrgInviteLabel] = useState(""),
+    [orgInviteCode, setOrgInviteCode] = useState(""),
+    [creatingOrgInvite, setCreatingOrgInvite] = useState(false),
     [busy, setBusy] = useState(false);
   const load = useCallback(async () => {
     if (!project || !navigator.onLine) return;
-    try {
-      setMembers(await api(`/api/projects/${project.id}/members`));
-    } catch (e) {
-      notify(e.message, true);
-    }
+    try { setMembers(await api(`/api/projects/${project.id}/members`)); }
+    catch (e) { notify(e.message, true); }
   }, [project?.id, notify]);
+  const loadOrgInvites = useCallback(async () => {
+    if (!navigator.onLine) return;
+    try { const d = await api("/api/org/invite"); setOrgInvites(d.tokens || []); }
+    catch (_) { /* account may not have an org */ }
+  }, []);
   useEffect(() => {
-    setMembers([]);
-    setInvitation(null);
-    load();
-  }, [load]);
+    setMembers([]); setInvitation(null); setNewOrgInvite(null);
+    load(); loadOrgInvites();
+  }, [load, loadOrgInvites]);
   const invite = async (values) => {
     setBusy(true);
     try {
-      const result = await api(`/api/projects/${project.id}/members`, {
-        method: "POST",
-        body: values,
-      });
+      const result = await api(`/api/projects/${project.id}/members`, { method: "POST", body: values });
       setInvitation(result.activation_code ? result : null);
       setInviteOpen(false);
-      await load();
-      await refresh();
-      notify(
-        result.existing
-          ? "Existing surveyor assigned to this study. Their current account remains unchanged."
-          : "Surveyor account created. Share the one-time activation code securely.",
-      );
-    } catch (e) {
-      notify(e.message, true);
-    } finally {
-      setBusy(false);
-    }
+      await load(); await refresh();
+      notify(result.existing
+        ? "Existing surveyor assigned to this study. Their current account remains unchanged."
+        : "Surveyor account created. Share the one-time activation code securely.");
+    } catch (e) { notify(e.message, true); }
+    finally { setBusy(false); }
+  };
+  const createOrgInvite = async (e) => {
+    e.preventDefault();
+    if (!orgInviteLabel.trim()) return;
+    setCreatingOrgInvite(true);
+    try {
+      const result = await api("/api/org/invite", {
+        method: "POST",
+        body: { label: orgInviteLabel.trim(), code: orgInviteCode.trim() || undefined },
+      });
+      setNewOrgInvite(result);
+      setOrgInviteLabel("");
+      setOrgInviteCode("");
+      await loadOrgInvites();
+      notify("Invitation code generated. Share it with your surveyors.");
+    } catch (e) { notify(e.message, true); }
+    finally { setCreatingOrgInvite(false); }
   };
   return (
     <>
@@ -3104,137 +3070,171 @@ function Team({ project, online, notify, refresh }) {
         title="Research team"
         description="Give every surveyor their own identity and access to this study's published questionnaires."
       >
-        <Button
-          icon={Plus}
-          disabled={!project || !online}
-          onClick={() => setInviteOpen(true)}
-        >
+        <Button icon={Plus} disabled={!project || !online} onClick={() => setInviteOpen(true)}>
           Add field surveyor
         </Button>
       </PageHeading>
       <div className="team-callout">
-        <span className="small-icon">
-          <Users size={24} />
-        </span>
+        <span className="small-icon"><Users size={24} /></span>
         <div>
           <h3>One person. One account. Clear responsibility.</h3>
-          <p>
-            Surveyors and invigilators collect assigned project data.
-            Administrators manage questions, team access, and exports.
-          </p>
+          <p>Surveyors and invigilators collect assigned project data. Administrators manage questions, team access, and exports.</p>
         </div>
         <ShieldCheck size={27} />
       </div>
+
+      {/* Project-level activation code result */}
       {invitation && (
         <section className="panel invitation-result">
           <div className="panel-heading">
             <div>
               <h3>Share this invitation securely</h3>
-              <p>
-                The code is displayed for this invitation only. It is not stored
-                in your browser.
-              </p>
+              <p>The code is displayed for this invitation only. It is not stored in your browser.</p>
             </div>
-            <button
-              className="icon-btn"
-              aria-label="Dismiss activation code"
-              onClick={() => setInvitation(null)}
-            >
-              <X size={19} />
-            </button>
+            <button className="icon-btn" aria-label="Dismiss activation code" onClick={() => setInvitation(null)}><X size={19} /></button>
           </div>
           <div className="invitation-values">
-            <div>
-              <label>Login ID</label>
-              <strong className="mono">{invitation.user.login_id}</strong>
-            </div>
-            <div>
-              <label>One-time activation code</label>
-              <strong className="mono activation-code">
-                {invitation.activation_code}
-              </strong>
-            </div>
+            <div><label>Login ID</label><strong className="mono">{invitation.user.login_id}</strong></div>
+            <div><label>One-time activation code</label><strong className="mono activation-code">{invitation.activation_code}</strong></div>
           </div>
-          <Notice>
-            The surveyor selects “Activate your account” on the sign-in screen,
-            enters this ID and code, and chooses their own password. A roll
-            number or login ID alone does not grant access.
-          </Notice>
+          <Notice>The surveyor selects the "Activate" tab on the sign-in screen, enters this ID and code, and chooses their own password.</Notice>
         </section>
       )}
+
+      {/* Org-level invite token panel */}
+      {online && (
+        <section className="panel">
+          <PanelHeading
+            title="Organisation invitation codes"
+            description="Create an invitation code for your organisation. Surveyors register using this code on the sign-in page and instantly get access to your studies."
+          />
+          {newOrgInvite && (
+            <div className="invitation-result" style={{marginBottom:"1.25rem"}}>
+              <div className="panel-heading" style={{marginBottom:".5rem"}}>
+                <div>
+                  <h3 style={{marginBottom:".2rem"}}>Invitation code ready — copy and share</h3>
+                  <p style={{fontSize:".85rem",opacity:".75"}}>Surveyors select &quot;Join via invite&quot; on the sign-in screen, enter this code, and set their credentials.</p>
+                </div>
+                <button className="icon-btn" onClick={() => setNewOrgInvite(null)} aria-label="Dismiss"><X size={18}/></button>
+              </div>
+              <div className="invitation-values" style={{alignItems:"center",gap:"1.5rem"}}>
+                <div><label>Label</label><strong>{newOrgInvite.label}</strong></div>
+                <div>
+                  <label>Invitation code</label>
+                  <strong className="mono activation-code" style={{fontSize:"1.1rem",letterSpacing:".5px"}}>{newOrgInvite.code || newOrgInvite.token}</strong>
+                </div>
+                <button className="button" type="button" onClick={() => { navigator.clipboard.writeText(newOrgInvite.code || newOrgInvite.token); notify("Invitation code copied to clipboard."); }} style={{marginLeft:"auto"}}>
+                  <Copy size={16}/> Copy code
+                </button>
+              </div>
+            </div>
+          )}
+          <form onSubmit={createOrgInvite} style={{display:"flex",gap:".75rem",alignItems:"flex-end",flexWrap:"wrap",marginBottom:"1.25rem"}}>
+            <label style={{flex:2,minWidth:"220px",marginBottom:0}}>
+              Group / study label
+              <input value={orgInviteLabel} onChange={e => setOrgInviteLabel(e.target.value)} placeholder="e.g. Batch 2026 field team" required />
+            </label>
+            <label style={{flex:1,minWidth:"160px",marginBottom:0}}>
+              Custom code (optional)
+              <input value={orgInviteCode} onChange={e => setOrgInviteCode(e.target.value)} placeholder="Leave blank to auto-generate" />
+            </label>
+            <Button type="submit" icon={creatingOrgInvite ? LoaderCircle : Plus} disabled={creatingOrgInvite}>
+              {creatingOrgInvite ? "Creating…" : "Generate invite code"}
+            </Button>
+          </form>
+          {orgInvites.length > 0 && (
+            <div style={{display:"grid",gap:"1rem"}}>
+              {orgInvites.map(t => {
+                const code = t.code || t.token;
+                const enrolled = t.members || [];
+                return (
+                  <div key={t.id} style={{background:"var(--surface-sunken,#161a22)",border:"1px solid var(--border,#2c3240)",borderRadius:"8px",padding:"1rem"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:".75rem",flexWrap:"wrap",marginBottom:".5rem"}}>
+                      <span className="avatar light"><Radio size={15}/></span>
+                      <div style={{flex:1,minWidth:"200px"}}>
+                        <strong style={{fontSize:"1rem"}}>{t.label}</strong>
+                        <div className="mono" style={{fontSize:".78rem",opacity:".65",marginTop:"2px"}}>
+                          Created by {t.created_by} · {fmtDate(t.created_at)}
+                        </div>
+                      </div>
+                      <div style={{display:"flex",alignItems:"center",gap:".5rem"}}>
+                        <span className="mono activation-code" style={{fontSize:".9rem",fontWeight:600,padding:".3rem .6rem",background:"var(--surface,#0d1117)",border:"1px solid var(--border,#30363d)",borderRadius:"6px",letterSpacing:".5px"}}>
+                          {code}
+                        </span>
+                        <button className="icon-btn" title="Copy invitation code" onClick={() => { navigator.clipboard.writeText(code); notify(`Code ${code} copied!`); }}>
+                          <Copy size={16}/>
+                        </button>
+                      </div>
+                      <span className={`badge ${enrolled.length ? "green" : "neutral"}`}>
+                        {enrolled.length} surveyor{enrolled.length === 1 ? "" : "s"} joined
+                      </span>
+                    </div>
+
+                    {/* Enrolled surveyors list for this code */}
+                    <div style={{marginTop:".75rem",paddingTop:".75rem",borderTop:"1px solid var(--border,#2c3240)"}}>
+                      <div style={{fontSize:".75rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".05em",color:"var(--muted,#8b949e)",marginBottom:".4rem"}}>
+                        {enrolled.length ? `Registered surveyors (${enrolled.length}):` : "No surveyors have registered with this code yet."}
+                      </div>
+                      {enrolled.length > 0 && (
+                        <div style={{display:"grid",gap:".35rem"}}>
+                          {enrolled.map(m => (
+                            <div key={m.id} style={{display:"flex",alignItems:"center",gap:".6rem",fontSize:".82rem",background:"rgba(255,255,255,0.02)",padding:".35rem .6rem",borderRadius:"4px",border:"1px solid rgba(255,255,255,0.04)"}}>
+                              <span className="avatar light" style={{width:"22px",height:"22px",fontSize:".68rem",minWidth:"22px"}}>
+                                {m.name.slice(0, 2).toUpperCase()}
+                              </span>
+                              <strong>{m.name}</strong>
+                              <span className="mono" style={{opacity:.7,fontSize:".78rem"}}>{m.login_id}</span>
+                              <span style={{marginLeft:"auto",opacity:.55,fontSize:".75rem"}}>Joined {fmtDate(m.joined_at)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Project members */}
       <section className="panel">
-        <PanelHeading
-          title="Project members"
-          description={`${members.length} people with individual access to this study.`}
-        />
+        <PanelHeading title="Project members" description={`${members.length} people with individual access to this study.`} />
         {members.length ? (
           <div className="member-list">
             {members.map((member) => (
               <div className="member-row" key={member.id}>
-                <span
-                  className={`avatar ${member.role === "admin" ? "" : "light"}`}
-                >
+                <span className={`avatar ${member.role === "admin" ? "" : "light"}`}>
                   {member.name.slice(0, 2).toUpperCase()}
                 </span>
                 <div>
                   <strong>{member.name}</strong>
                   <span className="mono">{member.login_id}</span>
                 </div>
-                <span
-                  className={`badge ${member.role === "admin" ? "green" : "neutral"}`}
-                >
+                <span className={`badge ${member.role === "admin" ? "green" : "neutral"}`}>
                   {member.role === "admin" ? "Administrator" : "Field surveyor"}
                 </span>
-                <span className="member-access">
-                  {member.role === "admin"
-                    ? "Manage & export"
-                    : "Collect project responses"}
-                </span>
+                <span className="member-access">{member.role === "admin" ? "Manage & export" : "Collect project responses"}</span>
               </div>
             ))}
           </div>
         ) : (
-          <Empty
-            icon={Users}
-            title={
-              online
-                ? "Bring your field team together"
-                : "Connect to view your team"
-            }
+          <Empty icon={Users}
+            title={online ? "Bring your field team together" : "Connect to view your team"}
             description="Create a unique login ID for each collector and share their one-time activation code securely."
           />
         )}
       </section>
       <div className="two-info-cards">
-        <div className="panel">
-          <ShieldCheck size={23} />
-          <h3>Access follows the project.</h3>
-          <p>
-            Collectors can submit to their assigned project and view their own
-            responses. Other collectors' answers and bulk exports stay
-            restricted.
-          </p>
-        </div>
-        <div className="panel">
-          <CircleHelp size={23} />
-          <h3>Keep fieldwork personal.</h3>
-          <p>
-            Use a team prefix when assigning roll numbers that may overlap
-            between institutions. Avoid shared passwords or shared collector
-            accounts.
-          </p>
-        </div>
+        <div className="panel"><ShieldCheck size={23} /><h3>Access follows the project.</h3><p>Collectors can submit to their assigned project and view their own responses. Other collectors' answers and bulk exports stay restricted.</p></div>
+        <div className="panel"><CircleHelp size={23} /><h3>Keep fieldwork personal.</h3><p>Use a team prefix when assigning roll numbers that may overlap between institutions. Avoid shared passwords or shared collector accounts.</p></div>
       </div>
-      {inviteOpen && (
-        <InviteModal
-          busy={busy}
-          onClose={() => setInviteOpen(false)}
-          onSave={invite}
-        />
-      )}
+      {inviteOpen && <InviteModal busy={busy} onClose={() => setInviteOpen(false)} onSave={invite} />}
     </>
   );
 }
+
 
 function Modal({ title, onClose, children, wide = false }) {
   const modalRef = useRef(null);
