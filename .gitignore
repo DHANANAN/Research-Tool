@@ -1,0 +1,16 @@
+/target/
+/web/node_modules/
+/web/dist/
+/.local/
+/.env
+/.env.*
+!/.env.example
+/test-results/
+/playwright-report/
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
+*.db-shm
+*.db-wal
+__pycache__/
+.DS_Store

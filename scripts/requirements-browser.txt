@@ -1,0 +1,2 @@
+# Optional development/CI browser checks, not an application dependency.
+playwright==1.62.0
