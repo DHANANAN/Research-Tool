@@ -25,7 +25,7 @@ For a network using an organization-approved TLS proxy, the build accepts an opt
 
 ## Connect Vercel to that server
 
-1. In the Vercel project, keep the repository root as the project's Root Directory so it sees both `api/` and `vercel.json`. Use the checked-in configuration: install `npm ci`, build `npm run build`, output `web/dist`. The root npm workspace and root lockfile provide the deployment installation. Clear any dashboard command overrides that still use `npm ci --prefix web`. Setting Root Directory to `web` hides the proxy and root routing.
+1. In the Vercel project, keep the repository root as the project's Root Directory so it sees both `api/` and `vercel.json`. Use the checked-in configuration: install `npm ci --include=dev`, build `npm run build`, output `web/dist`. A single root package and lockfile provide the deployment installation; there is no nested frontend package or npm workspace. Clear any dashboard command overrides that still use `npm ci --prefix web`. Setting Root Directory to `web` hides the proxy and root routing.
 2. Add the server-side environment variable `RESEARCH_BACKEND_URL` with the Rust server's HTTPS origin, for example `https://your-research-server.example`. Use the origin only, without `/api`, a trailing subpath, credentials, or query parameters. Do not use a `VITE_` variable for this setting.
 3. Redeploy the Vercel project after changing the variable or Root Directory. Environment changes do not update an already built deployment.
 4. Check the public site's `/api/health`: it should return HTTP 200 with `{"ok":true}`. If it returns a JSON 503, the proxy is installed but still needs the server setting. A JSON 502 indicates the configured upstream could not be reached.
@@ -42,3 +42,7 @@ node --test api/proxy.test.cjs
 ```
 
 The tests start temporary local HTTP servers and check missing configuration, rejected origins and paths, organization-registration JSON, session cookies, binary PDF uploads, and binary XLSX downloads. They do not claim that a live Vercel deployment was updated. Public deployment credentials and a persistent backend origin are required to complete that external step.
+
+## Minimal Vercel build
+
+The only build inputs are root `package.json`/`package-lock.json`, `web/`, and `assets/`. The optional `api/` proxy and `vercel.json` supply online routing. `.vercelignore` keeps Rust builds, containers, tests, documentation, local databases and caches out of CLI uploads; those source files remain available in the repository for the persistent server. Both Vercel and the container build use the same root lockfile and commands.

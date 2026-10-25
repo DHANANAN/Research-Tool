@@ -1,13 +1,13 @@
 FROM node:22-bookworm-slim AS web
 WORKDIR /build
-COPY web/package.json web/package-lock.json ./web/
+COPY package.json package-lock.json ./
 RUN --mount=type=secret,id=build_ca \
     if [ -f /run/secrets/build_ca ]; then \
-      NODE_EXTRA_CA_CERTS=/run/secrets/build_ca npm ci --prefix web; \
-    else npm ci --prefix web; fi
+      NODE_EXTRA_CA_CERTS=/run/secrets/build_ca npm ci --include=dev; \
+    else npm ci --include=dev; fi
 COPY web ./web
 COPY assets ./assets
-RUN npm run build --prefix web && chmod -R a+rX web/dist
+RUN npm run build && chmod -R a+rX web/dist
 
 FROM rust:1.90.0-bookworm AS rust
 WORKDIR /build

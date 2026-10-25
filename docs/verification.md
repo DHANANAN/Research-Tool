@@ -4,6 +4,8 @@ These observations describe this cloud development instance on 25 October 2026. 
 
 ## Executed checks
 
+Deployment cleanup was also verified in a fresh Node 22.23.4 / npm 10.9.9 container with no installed dependencies: `npm ci --include=dev`, `npm run build`, and both proxy checks passed. The browser access check passed against the simplified build. The deployment now uses one root package/lockfile, with full registry integrity metadata; the nested frontend manifests and npm workspace were removed. These are local results, not a claim that the public Vercel deployment has completed.
+
 | Check | Result and scope |
 | --- | --- |
 | `./scripts/setup.sh` | Passed frozen npm installation, production frontend build, and locked Rust build. TLS and package integrity checks remained enabled. |

@@ -2,10 +2,20 @@
   "name": "research-tool",
   "version": "0.1.0",
   "private": true,
-  "workspaces": ["web"],
-  "engines": { "node": "22.x" },
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
-    "build": "npm run build --workspace research-tool-web",
-    "dev": "npm run dev --workspace research-tool-web"
+    "build": "vite build web",
+    "dev": "vite web --host 127.0.0.1"
+  },
+  "dependencies": {
+    "lucide-react": "0.468.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "write-excel-file": "4.1.1"
+  },
+  "devDependencies": {
+    "vite": "6.4.5"
   }
 }

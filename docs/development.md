@@ -5,7 +5,7 @@ Use this guide to build and run the first development pilot. See the [roadmap](r
 ## Prerequisites
 
 - Rust **1.90.0**, including Cargo, rustfmt, and Clippy. The repository's `rust-toolchain.toml` records this version. Install Rust using the official [rustup instructions](https://rustup.rs/).
-- Node.js **20 or later**, preferably Node.js 22 LTS, and npm. Dependencies are recorded in `web/package-lock.json`.
+- Node.js **22 LTS**, and npm. Dependencies are recorded in the root `package-lock.json`.
 - A C compiler and normal native build tools for bundled SQLite. On Debian/Ubuntu these are provided by `build-essential`.
 - `pdftotext` and `pdfinfo`, provided by `poppler-utils` on Debian/Ubuntu, for native-text PDF import. Scanned-image OCR is not included.
 - Python 3 for generating a private first-run administrator password when no explicit password was supplied.
@@ -67,8 +67,8 @@ source scripts/common.sh # Activate the retained cloud Rust toolchain when neede
 cargo fmt --all -- --check
 cargo clippy --locked --all-targets -- -D warnings
 cargo test --locked
-npm ci --prefix web
-npm run build --prefix web
+npm ci --include=dev
+npm run build
 cargo build --locked
 python3 scripts/smoke.py
 ```

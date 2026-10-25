@@ -31,7 +31,7 @@ jobs:
         run: cargo test --locked
       - name: Build browser application
         run: |
-          npm ci
+          npm ci --include=dev
           npm run build
       - name: Build server and exercise the live application
         run: |

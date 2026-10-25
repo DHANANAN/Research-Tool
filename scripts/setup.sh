@@ -8,9 +8,9 @@ research_require_command node
 research_require_command npm
 research_require_command pdftotext
 
-node -e 'if (Number(process.versions.node.split(".")[0]) < 20) { console.error("Node.js 20 or later is required; Node.js 22 LTS is recommended."); process.exit(1); }'
+node -e 'if (Number(process.versions.node.split(".")[0]) < 22) { console.error("Use Node.js 22 LTS or newer; deployments are pinned to Node.js 22."); process.exit(1); }'
 
-npm ci --prefix web
-npm run build --prefix web
+npm ci --include=dev
+npm run build
 cargo build --locked
 printf 'Setup complete. Run ./scripts/start.sh from this checkout.\n'

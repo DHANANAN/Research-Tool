@@ -1,8 +1,11 @@
-api/proxy.test.cjs
-target
-.local
-web/node_modules
-node_modules
-tests
-scripts
-docs
+# Only these application files are needed by a Vercel upload.
+/*
+!/package.json
+!/package-lock.json
+!/vercel.json
+!/web/
+!/assets/
+!/api/
+/web/node_modules/
+/web/dist/
+/api/proxy.test.cjs
