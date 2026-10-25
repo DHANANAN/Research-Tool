@@ -4,7 +4,7 @@ This document coordinates the first implementation. The running code and tests d
 
 ## Runtime
 
-Rust/Axum API, SQLite (bundled library, database at `RESEARCH_DB_PATH`), React/Vite PWA. Serve `web/dist` from the API in production. Local first release deliberately avoids requiring a separately administered database; PostgreSQL remains a later deployment option. Bind `127.0.0.1:3000` by default. Vite proxies `/api` to the Rust server.
+Rust/Axum API, SQLite (bundled library, database at `RESEARCH_DB_PATH`), React/Vite PWA. Serve `dist` from the API in production. Local first release deliberately avoids requiring a separately administered database; PostgreSQL remains a later deployment option. Bind `127.0.0.1:3000` by default. Vite proxies `/api` to the Rust server.
 
 Every mutation requires header `X-Research-Client: 1`; use same-origin cookies and no cross-origin API policy. Session cookies: HttpOnly, SameSite=Lax, configurable Secure for HTTPS. JSON errors are `{ "error": "explanation" }`. Route paths below use ordinary URL parameters; they are not literal braces in requests.
 

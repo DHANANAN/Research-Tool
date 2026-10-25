@@ -23,7 +23,7 @@ cd /path/to/Research-Tool
 ./scripts/start.sh
 ```
 
-Setup performs frozen-lockfile installation with `npm ci`, builds `web/dist`, and builds the Rust server with `cargo build --locked`. Start serves the built website and API together at the configured bind address, initially `127.0.0.1:3000`. Open that address in your local browser.
+Setup performs frozen-lockfile installation with `npm ci`, builds `dist`, and builds the Rust server with `cargo build --locked`. Start serves the built website and API together at the configured bind address, initially `127.0.0.1:3000`. Open that address in your local browser.
 
 On a new database, start creates an administrator with login ID `admin`. Its random initial password is saved privately in ignored `.local/admin-password`; read that file locally to sign in. The script prints the file path, never the password. Do not commit, paste into an issue, or share that file. If you supply `RESEARCH_ADMIN_PASSWORD` yourself, that value is used only for initial administrator creation and is not written to the local password file.
 
@@ -53,7 +53,7 @@ For a build without the dev server, rerun `./scripts/setup.sh` after changing so
 | `RESEARCH_ADMIN_PASSWORD` | Initial administrator password; provide securely, never commit it |
 | `.local/admin-password` | Private generated first-run password when an explicit password was not provided |
 | `npm_config_cache` | npm cache location; scripts default to ignored `.local/npm-cache` so cloud setup does not require home-directory writes |
-| `web/dist` | Generated static browser application served by the Rust server |
+| `dist` | Generated static browser application served by the Rust server |
 | `target` | Rust build output; `target/debug/research-tool` is the development executable |
 
 Keep the SQLite database, its active journal files, and the initial password file private. A database file copied while writes are in progress may be inconsistent; document and test a supported SQLite backup procedure before using the pilot for participant data. Browser drafts and queues are device-local and do not constitute a backup. They can be cleared by the browser or operating system.

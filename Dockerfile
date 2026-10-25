@@ -7,7 +7,7 @@ RUN --mount=type=secret,id=build_ca \
     else npm ci --include=dev; fi
 COPY web ./web
 COPY assets ./assets
-RUN npm run build && chmod -R a+rX web/dist
+RUN npm run build && chmod -R a+rX dist
 
 FROM rust:1.90.0-bookworm AS rust
 WORKDIR /build
@@ -24,10 +24,10 @@ FROM debian:bookworm-slim
 RUN apt-get update && apt-get install --yes --no-install-recommends ca-certificates poppler-utils \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --uid 10001 research \
-    && mkdir -p /app/web/dist /data && chown -R research:research /app /data
+    && mkdir -p /app/dist /data && chown -R research:research /app /data
 WORKDIR /app
 COPY --from=rust /build/target/release/research-tool /app/research-tool
-COPY --from=web /build/web/dist /app/web/dist
+COPY --from=web /build/dist /app/dist
 USER research
 ENV RESEARCH_BIND=0.0.0.0:3000 RESEARCH_DB_PATH=/data/research.sqlite3 RESEARCH_SECURE_COOKIES=true
 EXPOSE 3000

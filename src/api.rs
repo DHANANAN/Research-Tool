@@ -161,7 +161,7 @@ pub fn router(state: AppState) -> Router {
             }),
         )
         .fallback_service(
-            ServeDir::new("web/dist").not_found_service(ServeFile::new("web/dist/index.html")),
+            ServeDir::new("dist").not_found_service(ServeFile::new("dist/index.html")),
         )
         .layer(DefaultBodyLimit::max(8 * 1024 * 1024))
         .layer(middleware::from_fn(protect))

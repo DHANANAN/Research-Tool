@@ -2,7 +2,7 @@
 set -euo pipefail
 source "$(dirname -- "${BASH_SOURCE[0]}")/common.sh"
 
-if [[ ! -x target/debug/research-tool || ! -f web/dist/index.html ]]; then
+if [[ ! -x target/debug/research-tool || ! -f dist/index.html ]]; then
   printf 'Application build is missing. Run ./scripts/setup.sh first.\n' >&2
   exit 1
 fi

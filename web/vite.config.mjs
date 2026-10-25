@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 
 export default defineConfig({
+  build: { outDir: "../dist", emptyOutDir: true },
   css: { postcss: {} },
   optimizeDeps: { exclude: ["write-excel-file"] },
   server: { proxy: { "/api": "http://127.0.0.1:3000" } },
@@ -42,7 +43,7 @@ export default defineConfig({
       closeBundle() {
         // Each build stages its own shell. A failed update must never overwrite
         // the previous service worker's complete and still-active shell cache.
-        const path = fileURLToPath(new URL("./dist/sw.js", import.meta.url));
+        const path = fileURLToPath(new URL("../dist/sw.js", import.meta.url));
         const source = readFileSync(path, "utf8");
         writeFileSync(
           path,
