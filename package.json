@@ -1,0 +1,11 @@
+{
+  "name": "research-tool",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": ["web"],
+  "engines": { "node": "22.x" },
+  "scripts": {
+    "build": "npm run build --workspace research-tool-web",
+    "dev": "npm run dev --workspace research-tool-web"
+  }
+}

@@ -2,6 +2,7 @@ api/proxy.test.cjs
 target
 .local
 web/node_modules
+node_modules
 tests
 scripts
 docs

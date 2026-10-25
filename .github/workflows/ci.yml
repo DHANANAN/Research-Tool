@@ -16,7 +16,7 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: package-lock.json
       - uses: dtolnay/rust-toolchain@1.90.0
         with:
           components: rustfmt, clippy
@@ -31,8 +31,8 @@ jobs:
         run: cargo test --locked
       - name: Build browser application
         run: |
-          npm ci --prefix web
-          npm run build --prefix web
+          npm ci
+          npm run build
       - name: Build server and exercise the live application
         run: |
           cargo build --locked
