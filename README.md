@@ -6,6 +6,8 @@ An open-source research data collection platform: create questionnaires, give fi
 
 ## Run it
 
+**Portal access and test accounts:** see [Getting into the portal](docs/access.md). The sign-in page includes **Explore demo** with four public playground profiles, local organization/account creation, and all 15 editable SC/SC example guides. For Vercel hosting, use the repository-root configuration and [Rust server deployment instructions](docs/deployment.md); online account APIs require a persistent backend.
+
 Install Rust 1.90.0, Node.js 20+ with npm, native build tools, Python 3, and Poppler (`pdftotext` and `pdfinfo`), then run:
 
 ```bash

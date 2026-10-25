@@ -60,6 +60,8 @@ Keep the SQLite database, its active journal files, and the initial password fil
 
 ## Verification
 
+The access regression check `python3 scripts/access_smoke.py` tests real organization registration on an empty Rust database, then blocks every online API request and exercises the browser playground: four profiles, editing/publishing, collection, persistence, organization isolation, and Excel export. The Vercel proxy is checked separately with `node --test api/proxy.test.cjs`.
+
 ```bash
 source scripts/common.sh # Activate the retained cloud Rust toolchain when needed.
 cargo fmt --all -- --check

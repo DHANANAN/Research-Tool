@@ -8,9 +8,13 @@ These observations describe this cloud development instance on 25 October 2026. 
 | --- | --- |
 | `./scripts/setup.sh` | Passed frozen npm installation, production frontend build, and locked Rust build. TLS and package integrity checks remained enabled. |
 | Rust formatting and Clippy | Passed `cargo fmt --all -- --check` and Clippy for all targets with warnings denied. |
-| `cargo test --locked` | 16 tests passed: 9 unit and 7 API integration tests. Zero failing or ignored tests. Empty binary/doc-test targets are not counted as tests. |
+| `cargo test --locked` | 21 tests passed: 9 unit and 12 API integration tests, including organization registration, legacy migration, invitation joining, and opt-in demo isolation. Zero failing or ignored tests. Empty binary/doc-test targets are not counted as tests. |
 | `python3 scripts/smoke.py` | Passed a live temporary-server check covering login, CSRF, one-time activation, project isolation, questionnaire versions, consent, typed answers, idempotent receipts, closure, native-text PDF import, real XLSX contents, and database persistence across restart. |
 | `python3 scripts/browser_smoke.py` | Passed the complete Chromium workflow, including metadata editing, offline reload/recovery/queue persistence, exactly-once reconnection, mobile layout, permissions, and the administrator's actual Excel download. |
+| `python3 scripts/access_smoke.py` | Passed real account/organization registration, then all four guest profiles with every online API blocked: editing, publication, collection, persistence, organization isolation, literal Excel output, mobile layout, and leaving the playground. No guest mutation reached the online server. |
+| `node --test api/proxy.test.cjs` | Two tests passed: missing-backend JSON errors and forwarding of authenticated JSON, session cookies, PDF bytes, and XLSX downloads. |
+| Container | Built the production image and exercised health/HTML, real registration, four opt-in demo logins, example isolation, PDF tools, and persistence after restarting the temporary container. Temporary containers/volumes were removed. |
+| Browser dependencies | `npm audit` reported zero vulnerabilities after choosing the lightweight XLSX writer. The pinned writer's shared-string dictionary is adjusted at build time so literal answers such as `constructor` remain valid; the access check verifies this and inert formula-like text. |
 | Real uploaded PDF | The supplied 60-page, 1.3 MB review document produced 200 optional question candidates and four review warnings. The explicit 200-candidate limit was reached: this was an incomplete import requiring instrument-by-instrument review, not a faithful automatic conversion or publication. |
 | Synthetic response volume | A separate temporary server accepted 1,000 fictional short interviews through four HTTP workers. Ten exact retries created no additional rows. The XLSX contained exactly the same 1,000 unique response IDs, before and after a server restart. |
 | Retained development data | The working database contains the unreviewed starter draft and zero participant/test responses. Test databases and temporary servers are separate. |
@@ -24,6 +28,8 @@ The synthetic volume check used a Rust debug build, SQLite, loopback HTTP withou
 The implementation also has storage-level checks performed during development for IndexedDB commit/rollback, per-user isolation, stable interview IDs, and failed service-worker update recovery. These observations supplement the checked-in browser test; they are not a substitute for running it after changes. Screenshots from fictional-data browser checks are saved under ignored `.local/test-artifacts/`.
 
 ## Still required before real field deployment
+
+The repository's [Vercel/Rust deployment configuration](deployment.md) is prepared and locally checked. This development environment cannot access the supplied public Vercel domain or its project settings. Public deployment and `RESEARCH_BACKEND_URL` configuration remain outside the verified local results. The browser playground works independently of that server connection; shared online accounts require it.
 
 - A reachable HTTPS deployment, secure-cookie configuration, backup/restore and account recovery procedures, and institution-approved data handling.
 - Actual target-device testing on Android/iOS, installation behavior, storage pressure, prolonged disconnection, and the study's expected questionnaire sizes and languages.

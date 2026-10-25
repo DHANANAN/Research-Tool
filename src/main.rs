@@ -19,7 +19,17 @@ async fn main() {
             std::process::exit(1)
         }
     };
-    let bind = std::env::var("RESEARCH_BIND").unwrap_or_else(|_| "127.0.0.1:3000".into());
+    if std::env::var("RESEARCH_DEMO_ACCOUNTS").is_ok_and(|value| value == "true")
+        && let Err(error) = db::enable_demo_accounts(&state)
+    {
+        eprintln!("Demo setup failed: {error}");
+        std::process::exit(1);
+    }
+    let bind = std::env::var("RESEARCH_BIND").unwrap_or_else(|_| {
+        std::env::var("PORT")
+            .map(|port| format!("0.0.0.0:{port}"))
+            .unwrap_or_else(|_| "127.0.0.1:3000".into())
+    });
     let listener = match tokio::net::TcpListener::bind(&bind).await {
         Ok(v) => v,
         Err(e) => {

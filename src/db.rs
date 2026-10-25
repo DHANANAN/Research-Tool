@@ -1,9 +1,8 @@
 use crate::{
     AppState, auth,
-    models::{Choice, Condition, Form, Project, Question},
+    models::{Form, Project, Question},
 };
-use rusqlite::{Connection, params};
-use serde_json::json;
+use rusqlite::{Connection, OptionalExtension, params};
 use std::{
     path::Path,
     sync::{Arc, Mutex},
@@ -38,15 +37,31 @@ CREATE TABLE IF NOT EXISTS login_attempts(login_id TEXT PRIMARY KEY,failures INT
 CREATE TABLE IF NOT EXISTS audit_events(id TEXT PRIMARY KEY,actor_id TEXT,project_id TEXT,action TEXT NOT NULL,record_id TEXT,created_at TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_responses_project ON responses(project_id);
 CREATE INDEX IF NOT EXISTS idx_forms_project ON forms(project_id);
-CREATE INDEX IF NOT EXISTS idx_users_org ON users(org_id);
 CREATE INDEX IF NOT EXISTS idx_invite_members_token ON org_invite_members(token_id);").map_err(|e|e.to_string())?;
-    let _ = db.execute("ALTER TABLE org_invite_tokens ADD COLUMN token_code TEXT", []);
-    let _ = db.execute("ALTER TABLE users ADD COLUMN org_id TEXT REFERENCES organizations(id)", []);
+    // Existing databases must gain columns before indexes can reference them.
+    // Inspect metadata and propagate failures: ignoring ALTER errors can leave a
+    // partially upgraded database that only fails on the next sign-in.
+    let migration = db.unchecked_transaction().map_err(|e| e.to_string())?;
+    ensure_column(
+        &migration,
+        "users",
+        "org_id",
+        "TEXT REFERENCES organizations(id)",
+    )?;
+    ensure_column(&migration, "org_invite_tokens", "token_code", "TEXT")?;
+    migration
+        .execute_batch(
+            "CREATE INDEX IF NOT EXISTS idx_users_org ON users(org_id); PRAGMA user_version=2;",
+        )
+        .map_err(|e| e.to_string())?;
+    backfill_organizations(&migration)?;
+    migration.commit().map_err(|e| e.to_string())?;
     let count: i64 = db
         .query_row("SELECT count(*) FROM users", [], |r| r.get(0))
         .map_err(|e| e.to_string())?;
-    if count == 0 {
-        let (login,password,name)=admin.ok_or("An empty database requires RESEARCH_ADMIN_ID and RESEARCH_ADMIN_PASSWORD (minimum 12 characters). Run scripts/dev.sh for local development.")?;
+    if count == 0
+        && let Some((login, password, name)) = admin
+    {
         if login.trim().is_empty() || login.len() > 100 || name.trim().is_empty() {
             return Err("Administrator ID and name must be nonempty.".into());
         }
@@ -54,20 +69,44 @@ CREATE INDEX IF NOT EXISTS idx_invite_members_token ON org_invite_members(token_
         let uid = Uuid::new_v4().to_string();
         let org_id = Uuid::new_v4().to_string();
         let now = chrono::Utc::now().to_rfc3339();
-        db.execute("INSERT INTO organizations(id,name,created_at) VALUES(?1,?2,?3)",params![org_id,"Default Organization",now]).map_err(|e|e.to_string())?;
-        db.execute("INSERT INTO users(id,org_id,login_id,name,role,password_hash,active) VALUES(?1,?2,?3,?4,'admin',?5,1)",params![uid,org_id,login,name,hash]).map_err(|e|e.to_string())?;
-        seed(&db, &uid)?;
+        let bootstrap = db.unchecked_transaction().map_err(|e| e.to_string())?;
+        bootstrap
+            .execute(
+                "INSERT INTO organizations(id,name,created_at) VALUES(?1,?2,?3)",
+                params![org_id, "Default Organization", now],
+            )
+            .map_err(|e| e.to_string())?;
+        bootstrap.execute("INSERT INTO users(id,org_id,login_id,name,role,password_hash,active) VALUES(?1,?2,?3,?4,'admin',?5,1)",params![uid,org_id,login,name,hash]).map_err(|e|e.to_string())?;
+        seed(&bootstrap, &uid)?;
+        bootstrap.commit().map_err(|e| e.to_string())?;
     }
     Ok(AppState {
         db: Arc::new(Mutex::new(db)),
         secure_cookies,
     })
 }
+#[derive(serde::Deserialize)]
+struct StudyTemplate {
+    key: String,
+    title: String,
+    description: String,
+    questions: Vec<Question>,
+}
+
 fn seed(db: &Connection, owner: &str) -> Result<(), String> {
-    let project=Project{id:Uuid::new_v4().to_string(),name:"Smart Cities, Silent Citizens".into(),description:"ICSSR study workspace: accessibility and usability of smart-city initiatives for older people. Fifth city and approved instruments await confirmation. The example below is unapproved and must be reviewed before use.".into(),cities:vec!["Delhi".into(),"Aizawl".into(),"Chennai".into(),"Srinagar".into()]};
+    let project = Project {
+        id: Uuid::new_v4().to_string(),
+        name: "Smart Cities, Silent Citizens".into(),
+        description: "Editable SC, SC example workspace. All 15 instrument guides are newly worded, unapproved examples for review; confirm cities, eligibility, consent, and scoring against the approved study protocol.".into(),
+        cities: vec!["Delhi".into(), "Aizawl".into(), "Chennai".into(), "Srinagar".into()],
+    };
     db.execute(
         "INSERT INTO projects(id,owner_id,data) VALUES(?1,?2,?3)",
-        params![project.id, owner, serde_json::to_string(&project).unwrap()],
+        params![
+            project.id,
+            owner,
+            serde_json::to_string(&project).map_err(|e| e.to_string())?
+        ],
     )
     .map_err(|e| e.to_string())?;
     db.execute(
@@ -75,114 +114,34 @@ fn seed(db: &Connection, owner: &str) -> Result<(), String> {
         params![project.id, owner],
     )
     .map_err(|e| e.to_string())?;
-    let mut questions = vec![
-        q(
-            "q_consent",
-            "Has the participant freely agreed to this interview after hearing the study information?",
-            "boolean",
-            true,
-            vec![],
-        ),
-        q(
-            "q_participant_code",
-            "Participant code (optional, avoid names and contact details)",
-            "text",
-            false,
-            vec![],
-        ),
-        q(
-            "q_city",
-            "Study city",
-            "single",
-            false,
-            vec![
-                ("delhi", "Delhi"),
-                ("aizawl", "Aizawl"),
-                ("chennai", "Chennai"),
-                ("srinagar", "Srinagar"),
+    let templates: Vec<StudyTemplate> =
+        serde_json::from_str(include_str!("../assets/study-templates.json"))
+            .map_err(|e| format!("Invalid bundled study templates: {e}"))?;
+    for template in templates {
+        crate::validation::schema(&template.questions)
+            .map_err(|e| format!("Invalid study template '{}': {e}", template.key))?;
+        let form = Form {
+            id: Uuid::new_v4().to_string(),
+            project_id: project.id.clone(),
+            title: template.title,
+            description: template.description,
+            version: 1,
+            status: "draft".into(),
+            questions: template.questions,
+            reviewed: false,
+        };
+        db.execute(
+            "INSERT INTO forms(id,project_id,lineage_id,data) VALUES(?1,?2,?3,?4)",
+            params![
+                form.id,
+                form.project_id,
+                format!("{}:{}", project.id, template.key),
+                serde_json::to_string(&form).map_err(|e| e.to_string())?
             ],
-        ),
-        q(
-            "q_age_band",
-            "Participant age band — candidate categories, confirm with the approved study protocol",
-            "single",
-            false,
-            vec![
-                ("age_60_69", "60–69"),
-                ("age_70_79", "70–79"),
-                ("age_80_plus", "80 and above"),
-                ("not_disclosed", "Prefer not to say"),
-            ],
-        ),
-        q(
-            "q_service_access",
-            "How easy is it to use the city service you discussed in this interview?",
-            "single",
-            false,
-            vec![
-                ("very_easy", "Very easy"),
-                ("easy", "Easy"),
-                ("difficult", "Difficult"),
-                ("very_difficult", "Very difficult"),
-                ("not_used", "Have not used it"),
-            ],
-        ),
-        q(
-            "q_barriers",
-            "Which barriers, if any, affected access? Select all that apply.",
-            "multiple",
-            false,
-            vec![
-                ("digital", "Digital skills or device access"),
-                ("physical", "Physical accessibility"),
-                ("language", "Language or information"),
-                ("cost", "Cost"),
-                ("other", "Other"),
-            ],
-        ),
-        q(
-            "q_comments",
-            "What change would make these city services easier to use?",
-            "long_text",
-            false,
-            vec![],
-        ),
-    ];
-    for question in questions.iter_mut().skip(1) {
-        question.show_if = Some(Condition {
-            question_id: "q_consent".into(),
-            equals: json!(true),
-        });
+        )
+        .map_err(|e| e.to_string())?;
     }
-    let form=Form{id:Uuid::new_v4().to_string(),project_id:project.id,title:"Older residents' city-service access — UNAPPROVED draft".into(),description:"Illustrative questions written for development, not the approved ICSSR instrument. Replace study information, consent wording, age categories and city list using the approved research protocol. Do not collect participant data until the research team has reviewed and published a version.".into(),version:1,status:"draft".into(),questions,reviewed:false};
-    db.execute(
-        "INSERT INTO forms(id,project_id,lineage_id,data) VALUES(?1,?2,?1,?3)",
-        params![
-            form.id,
-            form.project_id,
-            serde_json::to_string(&form).unwrap()
-        ],
-    )
-    .map_err(|e| e.to_string())?;
     Ok(())
-}
-fn q(id: &str, label: &str, kind: &str, required: bool, choices: Vec<(&str, &str)>) -> Question {
-    Question {
-        id: id.into(),
-        label: label.into(),
-        kind: kind.into(),
-        required,
-        choices: choices
-            .into_iter()
-            .map(|(code, label)| Choice {
-                code: code.into(),
-                label: label.into(),
-            })
-            .collect(),
-        min: None,
-        max: None,
-        show_if: None,
-    }
 }
 pub fn audit(
     db: &Connection,
@@ -203,6 +162,8 @@ pub fn register_org(
     name: &str,
     password_hash: &str,
 ) -> Result<(String, String), String> {
+    let tx = db.unchecked_transaction().map_err(|e| e.to_string())?;
+    let db = &tx;
     let existing: i64 = db
         .query_row(
             "SELECT count(*) FROM users WHERE login_id=?1",
@@ -237,7 +198,11 @@ pub fn register_org(
     };
     db.execute(
         "INSERT INTO projects(id,owner_id,data) VALUES(?1,?2,?3)",
-        params![proj_id, uid, serde_json::to_string(&default_proj).map_err(|e| e.to_string())?],
+        params![
+            proj_id,
+            uid,
+            serde_json::to_string(&default_proj).map_err(|e| e.to_string())?
+        ],
     )
     .map_err(|e| e.to_string())?;
     db.execute(
@@ -246,6 +211,9 @@ pub fn register_org(
     )
     .map_err(|e| e.to_string())?;
 
+    seed(db, &uid)?;
+    audit(db, &uid, "", "organization.register", &org_id).map_err(|e| e.to_string())?;
+    tx.commit().map_err(|e| e.to_string())?;
     Ok((uid, org_id))
 }
 
@@ -267,7 +235,9 @@ pub fn create_org_invite(
         )
         .map_err(|e| e.to_string())?;
     if existing > 0 {
-        return Err("This invitation code is already in use. Please choose a different code.".into());
+        return Err(
+            "This invitation code is already in use. Please choose a different code.".into(),
+        );
     }
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
@@ -287,6 +257,8 @@ pub fn join_via_org_invite(
     name: &str,
     password_hash: &str,
 ) -> Result<(crate::models::User, crate::models::Org), String> {
+    let tx = db.unchecked_transaction().map_err(|e| e.to_string())?;
+    let db = &tx;
     let trimmed = code_or_token.trim();
     let normalized = trimmed.to_uppercase();
     let hash = crate::auth::digest(&normalized);
@@ -300,7 +272,8 @@ pub fn join_via_org_invite(
         )
         .optional()
         .map_err(|e| e.to_string())?;
-    let (token_id, org_id, _label) = row.ok_or_else(|| "Invalid or expired invitation code.".to_string())?;
+    let (token_id, org_id, _label) =
+        row.ok_or_else(|| "Invalid or expired invitation code.".to_string())?;
     let existing: i64 = db
         .query_row(
             "SELECT count(*) FROM users WHERE login_id=?1",
@@ -334,26 +307,34 @@ pub fn join_via_org_invite(
     .map_err(|e| e.to_string())?;
 
     // Auto-assign new surveyor to all projects belonging to this org
-    let mut p_stmt = db.prepare(
-        "SELECT p.id FROM projects p JOIN users u ON u.id=p.owner_id WHERE u.org_id=?1",
-    ).map_err(|e| e.to_string())?;
+    let mut p_stmt = db
+        .prepare("SELECT p.id FROM projects p JOIN users u ON u.id=p.owner_id WHERE u.org_id=?1")
+        .map_err(|e| e.to_string())?;
     let pids: Vec<String> = p_stmt
         .query_map([&org_id], |r| r.get(0))
         .map_err(|e| e.to_string())?
-        .filter_map(|r| r.ok())
-        .collect();
+        .collect::<Result<_, _>>()
+        .map_err(|e| e.to_string())?;
+    drop(p_stmt);
     for pid in &pids {
-        let _ = db.execute(
+        db.execute(
             "INSERT OR IGNORE INTO memberships(project_id,user_id) VALUES(?1,?2)",
             params![pid, uid],
-        );
+        )
+        .map_err(|e| e.to_string())?;
     }
 
     let org: crate::models::Org = db
         .query_row(
             "SELECT id,name,created_at FROM organizations WHERE id=?1",
             [&org_id],
-            |r| Ok(crate::models::Org { id: r.get(0)?, name: r.get(1)?, created_at: r.get(2)? }),
+            |r| {
+                Ok(crate::models::Org {
+                    id: r.get(0)?,
+                    name: r.get(1)?,
+                    created_at: r.get(2)?,
+                })
+            },
         )
         .map_err(|e| e.to_string())?;
     let user = crate::models::User {
@@ -363,5 +344,169 @@ pub fn join_via_org_invite(
         name: name.to_string(),
         role: "surveyor".into(),
     };
+    tx.commit().map_err(|e| e.to_string())?;
     Ok((user, org))
+}
+
+fn ensure_column(
+    db: &Connection,
+    table: &str,
+    column: &str,
+    definition: &str,
+) -> Result<(), String> {
+    // Names are internal constants, never request data.
+    let mut statement = db
+        .prepare(&format!("PRAGMA table_info({table})"))
+        .map_err(|e| e.to_string())?;
+    let columns = statement
+        .query_map([], |row| row.get::<_, String>(1))
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+    if !columns.iter().any(|name| name == column) {
+        db.execute(
+            &format!("ALTER TABLE {table} ADD COLUMN {column} {definition}"),
+            [],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+fn backfill_organizations(db: &Connection) -> Result<(), String> {
+    let mut statement = db
+        .prepare("SELECT id,name FROM users WHERE role='admin' AND org_id IS NULL")
+        .map_err(|e| e.to_string())?;
+    let admins = statement
+        .query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+    for (uid, name) in admins {
+        let org_id = Uuid::new_v4().to_string();
+        db.execute(
+            "INSERT INTO organizations(id,name,created_at) VALUES(?1,?2,?3)",
+            params![
+                org_id,
+                format!("{name}'s organization"),
+                chrono::Utc::now().to_rfc3339()
+            ],
+        )
+        .map_err(|e| e.to_string())?;
+        db.execute(
+            "UPDATE users SET org_id=?1 WHERE id=?2 AND org_id IS NULL",
+            params![org_id, uid],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    // Attribute a legacy surveyor only if all existing project owners identify
+    // one organization. Preserve memberships even when historical scope differs.
+    db.execute("UPDATE users SET org_id=(SELECT min(owner.org_id) FROM memberships m JOIN projects p ON p.id=m.project_id JOIN users owner ON owner.id=p.owner_id WHERE m.user_id=users.id) WHERE role='surveyor' AND org_id IS NULL AND (SELECT count(DISTINCT owner.org_id) FROM memberships m JOIN projects p ON p.id=m.project_id JOIN users owner ON owner.id=p.owner_id WHERE m.user_id=users.id)=1", []).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Explicitly opt-in public demonstration accounts. Never run this for ordinary
+/// installations. Memberships are limited to a separately owned sandbox study.
+pub fn enable_demo_accounts(state: &AppState) -> Result<(), String> {
+    let db = state.db.lock().map_err(|_| "Database unavailable")?;
+    let tx = db.unchecked_transaction().map_err(|e| e.to_string())?;
+    tx.execute_batch("CREATE TABLE IF NOT EXISTS demo_accounts(user_id TEXT PRIMARY KEY REFERENCES users(id),login_id TEXT UNIQUE NOT NULL);").map_err(|e| e.to_string())?;
+    let accounts = [
+        ("guest-admin", "Guest administrator", "admin"),
+        ("guest-surveyor-1", "Guest surveyor one", "surveyor"),
+        ("guest-surveyor-2", "Guest surveyor two", "surveyor"),
+        ("guest-surveyor-3", "Guest surveyor three", "surveyor"),
+    ];
+    let mut registered = 0;
+    for (login, _, role) in accounts {
+        let existing: Option<(String, String)> = tx
+            .query_row(
+                "SELECT id,role FROM users WHERE login_id=?1",
+                [login],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .optional()
+            .map_err(|e| e.to_string())?;
+        if let Some((id, existing_role)) = existing {
+            let managed: bool = tx
+                .query_row(
+                    "SELECT EXISTS(SELECT 1 FROM demo_accounts WHERE user_id=?1 AND login_id=?2)",
+                    params![id, login],
+                    |r| r.get(0),
+                )
+                .map_err(|e| e.to_string())?;
+            if !managed || role != existing_role {
+                return Err(format!(
+                    "Refusing to replace existing non-demo account '{login}'. Use a separate database for demo accounts."
+                ));
+            }
+            registered += 1;
+        }
+    }
+    if registered == 4 {
+        return Ok(());
+    }
+    if registered != 0 {
+        return Err("The demonstration account registry is incomplete. Existing accounts were preserved; use a fresh demo database.".into());
+    }
+    let org_id = Uuid::new_v4().to_string();
+    tx.execute(
+        "INSERT INTO organizations(id,name,created_at) VALUES(?1,'Research-Tool guest sandbox',?2)",
+        params![org_id, chrono::Utc::now().to_rfc3339()],
+    )
+    .map_err(|e| e.to_string())?;
+    let mut user_ids = Vec::new();
+    for (login, name, role) in accounts {
+        let id = Uuid::new_v4().to_string();
+        let hash = auth::hash_password("ResearchDemo2026!")?;
+        tx.execute("INSERT INTO users(id,org_id,login_id,name,role,password_hash,active) VALUES(?1,?2,?3,?4,?5,?6,1)",params![id,org_id,login,name,role,hash]).map_err(|e|e.to_string())?;
+        tx.execute(
+            "INSERT INTO demo_accounts(user_id,login_id) VALUES(?1,?2)",
+            params![id, login],
+        )
+        .map_err(|e| e.to_string())?;
+        user_ids.push(id);
+    }
+    seed(&tx, &user_ids[0])?;
+    let project_id: String = tx
+        .query_row(
+            "SELECT id FROM projects WHERE owner_id=?1 ORDER BY rowid DESC LIMIT 1",
+            [&user_ids[0]],
+            |r| r.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+    let raw: String = tx
+        .query_row(
+            "SELECT data FROM forms WHERE project_id=?1 ORDER BY rowid LIMIT 1",
+            [&project_id],
+            |r| r.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+    let mut example: Form = serde_json::from_str(&raw).map_err(|e| e.to_string())?;
+    example.id = Uuid::new_v4().to_string();
+    example.title = "SC, SC — fictional practice interview".into();
+    example.description = "Guest sandbox only. Use fictional answers to practice collection and export. These are example questions, not an approved ICSSR instrument.".into();
+    example.status = "published".into();
+    example.reviewed = true;
+    tx.execute(
+        "INSERT INTO forms(id,project_id,lineage_id,data) VALUES(?1,?2,?1,?3)",
+        params![
+            example.id,
+            project_id,
+            serde_json::to_string(&example).map_err(|e| e.to_string())?
+        ],
+    )
+    .map_err(|e| e.to_string())?;
+    for uid in &user_ids[1..] {
+        tx.execute(
+            "INSERT INTO memberships(project_id,user_id) VALUES(?1,?2)",
+            params![project_id, uid],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    audit(&tx, &user_ids[0], &project_id, "demo.initialize", &org_id).map_err(|e| e.to_string())?;
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(())
 }

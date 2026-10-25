@@ -1,0 +1,1368 @@
+[
+  {
+    "key": "older_adult_structured",
+    "title": "Older resident: service access survey — UNAPPROVED draft",
+    "description": "Smart Cities, Silent Citizens: Structured account of access to city and digital services. Illustrative questions newly written for application exploration, not the approved study instrument. Replace this information with the reviewed participant information and consent process. Participation is voluntary; all questions after consent are optional. Do not record names, contact details, case identifiers, or identifiable stories. The final city list, eligibility, translations, and any scoring require researcher review.",
+    "questions": [
+      {
+        "id": "q_consent",
+        "label": "After receiving the study information and an opportunity to ask questions, do you freely agree to this interview?",
+        "kind": "boolean",
+        "required": true,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": null
+      },
+      {
+        "id": "q_city",
+        "label": "Which study city is this interview about?",
+        "kind": "single",
+        "required": false,
+        "choices": [
+          {
+            "code": "delhi",
+            "label": "Delhi"
+          },
+          {
+            "code": "aizawl",
+            "label": "Aizawl"
+          },
+          {
+            "code": "chennai",
+            "label": "Chennai"
+          },
+          {
+            "code": "srinagar",
+            "label": "Srinagar"
+          }
+        ],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_age_band",
+        "label": "Which age category does the participant choose to provide? Confirm the study categories before use.",
+        "kind": "single",
+        "required": false,
+        "choices": [
+          {
+            "code": "age_60_74",
+            "label": "60–74"
+          },
+          {
+            "code": "age_75_84",
+            "label": "75–84"
+          },
+          {
+            "code": "age_85_plus",
+            "label": "85 or above"
+          },
+          {
+            "code": "not_disclosed",
+            "label": "Prefer not to provide"
+          }
+        ],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_service",
+        "label": "Which city service would you like to discuss?",
+        "kind": "text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_access",
+        "label": "How easy or difficult was your most recent attempt to use that service?",
+        "kind": "single",
+        "required": false,
+        "choices": [
+          {
+            "code": "very_easy",
+            "label": "Very easy"
+          },
+          {
+            "code": "easy",
+            "label": "Easy"
+          },
+          {
+            "code": "difficult",
+            "label": "Difficult"
+          },
+          {
+            "code": "very_difficult",
+            "label": "Very difficult"
+          },
+          {
+            "code": "not_used",
+            "label": "Have not tried"
+          }
+        ],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_barriers",
+        "label": "Which barriers affected that attempt? Select any that apply.",
+        "kind": "multiple",
+        "required": false,
+        "choices": [
+          {
+            "code": "device",
+            "label": "Device or connection"
+          },
+          {
+            "code": "instructions",
+            "label": "Instructions or language"
+          },
+          {
+            "code": "physical",
+            "label": "Physical access"
+          },
+          {
+            "code": "cost",
+            "label": "Cost"
+          },
+          {
+            "code": "support",
+            "label": "Help was unavailable"
+          },
+          {
+            "code": "other",
+            "label": "Another barrier"
+          }
+        ],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_improvement",
+        "label": "What one change would make access easier?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      }
+    ]
+  },
+  {
+    "key": "older_adult_qualitative",
+    "title": "Older resident: experience interview — UNAPPROVED draft",
+    "description": "Smart Cities, Silent Citizens: An open conversation about autonomy and lived experience. Illustrative questions newly written for application exploration, not the approved study instrument. Replace this information with the reviewed participant information and consent process. Participation is voluntary; all questions after consent are optional. Do not record names, contact details, case identifiers, or identifiable stories. The final city list, eligibility, translations, and any scoring require researcher review.",
+    "questions": [
+      {
+        "id": "q_consent",
+        "label": "After receiving the study information and an opportunity to ask questions, do you freely agree to this interview?",
+        "kind": "boolean",
+        "required": true,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": null
+      },
+      {
+        "id": "q_city",
+        "label": "Which study city is discussed?",
+        "kind": "single",
+        "required": false,
+        "choices": [
+          {
+            "code": "delhi",
+            "label": "Delhi"
+          },
+          {
+            "code": "aizawl",
+            "label": "Aizawl"
+          },
+          {
+            "code": "chennai",
+            "label": "Chennai"
+          },
+          {
+            "code": "srinagar",
+            "label": "Srinagar"
+          }
+        ],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_recent_attempt",
+        "label": "Please describe a recent attempt to use a city service, in as much or as little detail as you wish.",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_assistance",
+        "label": "What help, if any, did you choose to use?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_choice",
+        "label": "What helped you retain choice and control during the experience?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_difficult_moment",
+        "label": "Was any part uncomfortable or difficult, and what would you like the researcher to understand?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_change",
+        "label": "What should service providers change first?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      }
+    ]
+  },
+  {
+    "key": "caregiver",
+    "title": "Caregiver: support and access interview — UNAPPROVED draft",
+    "description": "Smart Cities, Silent Citizens: A separate account from a person supporting an older resident. Illustrative questions newly written for application exploration, not the approved study instrument. Replace this information with the reviewed participant information and consent process. Participation is voluntary; all questions after consent are optional. Do not record names, contact details, case identifiers, or identifiable stories. The final city list, eligibility, translations, and any scoring require researcher review.",
+    "questions": [
+      {
+        "id": "q_consent",
+        "label": "After receiving the study information and an opportunity to ask questions, do you freely agree to this interview?",
+        "kind": "boolean",
+        "required": true,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": null
+      },
+      {
+        "id": "q_support_role",
+        "label": "How would you describe the support you provide, without naming the person?",
+        "kind": "text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_services",
+        "label": "Which city or digital services do you commonly help with?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_support_tasks",
+        "label": "What parts of using those services require assistance?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_choice",
+        "label": "How do you check and respect the older person's preferences?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_burden",
+        "label": "What makes providing this support difficult?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_improvement",
+        "label": "What would reduce avoidable dependence while keeping support available?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      }
+    ]
+  },
+  {
+    "key": "government_official",
+    "title": "Government official: inclusive service delivery — UNAPPROVED draft",
+    "description": "Smart Cities, Silent Citizens: Institutional decisions and delivery responsibilities. Illustrative questions newly written for application exploration, not the approved study instrument. Replace this information with the reviewed participant information and consent process. Participation is voluntary; all questions after consent are optional. Do not record names, contact details, case identifiers, or identifiable stories. The final city list, eligibility, translations, and any scoring require researcher review.",
+    "questions": [
+      {
+        "id": "q_consent",
+        "label": "After receiving the study information and an opportunity to ask questions, do you freely agree to this interview?",
+        "kind": "boolean",
+        "required": true,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": null
+      },
+      {
+        "id": "q_role",
+        "label": "What service-delivery responsibilities does your role cover?",
+        "kind": "text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_participation",
+        "label": "How are older residents involved when services are planned or changed?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_alternatives",
+        "label": "What routes are available when a resident cannot use a digital channel?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_evidence",
+        "label": "What non-identifying evidence is used to understand access problems?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_action",
+        "label": "What improvement is feasible within your responsibilities?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      }
+    ]
+  },
+  {
+    "key": "urban_planner",
+    "title": "Urban planner: accessibility and public space — UNAPPROVED draft",
+    "description": "Smart Cities, Silent Citizens: Planning and design decisions affecting older residents. Illustrative questions newly written for application exploration, not the approved study instrument. Replace this information with the reviewed participant information and consent process. Participation is voluntary; all questions after consent are optional. Do not record names, contact details, case identifiers, or identifiable stories. The final city list, eligibility, translations, and any scoring require researcher review.",
+    "questions": [
+      {
+        "id": "q_consent",
+        "label": "After receiving the study information and an opportunity to ask questions, do you freely agree to this interview?",
+        "kind": "boolean",
+        "required": true,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": null
+      },
+      {
+        "id": "q_role",
+        "label": "What kinds of planning or design work do you contribute to?",
+        "kind": "text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_barriers",
+        "label": "Which features of routes, buildings, or public spaces create access difficulties for older residents?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_consultation",
+        "label": "How do older residents influence design decisions?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_digital_links",
+        "label": "How are physical access and digital service requirements considered together?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_evaluation",
+        "label": "How could an accessibility improvement be checked after implementation?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      }
+    ]
+  },
+  {
+    "key": "control_centre",
+    "title": "Control-centre staff: support pathways — UNAPPROVED draft",
+    "description": "Smart Cities, Silent Citizens: Interactions between smart-city operations and resident support. Illustrative questions newly written for application exploration, not the approved study instrument. Replace this information with the reviewed participant information and consent process. Participation is voluntary; all questions after consent are optional. Do not record names, contact details, case identifiers, or identifiable stories. The final city list, eligibility, translations, and any scoring require researcher review.",
+    "questions": [
+      {
+        "id": "q_consent",
+        "label": "After receiving the study information and an opportunity to ask questions, do you freely agree to this interview?",
+        "kind": "boolean",
+        "required": true,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": null
+      },
+      {
+        "id": "q_function",
+        "label": "What resident-facing functions does the centre support?",
+        "kind": "text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_channels",
+        "label": "Through which channels can residents seek assistance?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_access",
+        "label": "How are needs of people with limited digital access recognized?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_escalation",
+        "label": "How is an unresolved access problem passed to an appropriate team?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_improvement",
+        "label": "What process change could make support easier for older residents?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      }
+    ]
+  },
+  {
+    "key": "municipal_staff",
+    "title": "Municipal staff: everyday service access — UNAPPROVED draft",
+    "description": "Smart Cities, Silent Citizens: Operational experience without individual complaint or case records. Illustrative questions newly written for application exploration, not the approved study instrument. Replace this information with the reviewed participant information and consent process. Participation is voluntary; all questions after consent are optional. Do not record names, contact details, case identifiers, or identifiable stories. The final city list, eligibility, translations, and any scoring require researcher review.",
+    "questions": [
+      {
+        "id": "q_consent",
+        "label": "After receiving the study information and an opportunity to ask questions, do you freely agree to this interview?",
+        "kind": "boolean",
+        "required": true,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": null
+      },
+      {
+        "id": "q_service",
+        "label": "Which municipal service area do you work with?",
+        "kind": "text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_steps",
+        "label": "What steps must a resident complete to receive the service?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_difficulty",
+        "label": "Which steps most often require additional explanation or assistance?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_alternative",
+        "label": "What practical alternative is offered if the digital route is unsuitable?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_improvement",
+        "label": "Which operational change would remove the most avoidable difficulty?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      }
+    ]
+  },
+  {
+    "key": "care_home",
+    "title": "Care-home staff: residents and city services — UNAPPROVED draft",
+    "description": "Smart Cities, Silent Citizens: Institutional support for residents' independent choices. Illustrative questions newly written for application exploration, not the approved study instrument. Replace this information with the reviewed participant information and consent process. Participation is voluntary; all questions after consent are optional. Do not record names, contact details, case identifiers, or identifiable stories. The final city list, eligibility, translations, and any scoring require researcher review.",
+    "questions": [
+      {
+        "id": "q_consent",
+        "label": "After receiving the study information and an opportunity to ask questions, do you freely agree to this interview?",
+        "kind": "boolean",
+        "required": true,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": null
+      },
+      {
+        "id": "q_role",
+        "label": "What responsibilities does your role include?",
+        "kind": "text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_services",
+        "label": "Which public services do residents ask for help accessing?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_support",
+        "label": "How is assistance arranged when a resident requests it?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_privacy",
+        "label": "How are resident choice and privacy respected during assistance?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_change",
+        "label": "What outside service improvement would be most useful?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      }
+    ]
+  },
+  {
+    "key": "digital_trainer",
+    "title": "Digital trainer: learning and confidence — UNAPPROVED draft",
+    "description": "Smart Cities, Silent Citizens: Approaches to supporting practical digital skills. Illustrative questions newly written for application exploration, not the approved study instrument. Replace this information with the reviewed participant information and consent process. Participation is voluntary; all questions after consent are optional. Do not record names, contact details, case identifiers, or identifiable stories. The final city list, eligibility, translations, and any scoring require researcher review.",
+    "questions": [
+      {
+        "id": "q_consent",
+        "label": "After receiving the study information and an opportunity to ask questions, do you freely agree to this interview?",
+        "kind": "boolean",
+        "required": true,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": null
+      },
+      {
+        "id": "q_learning",
+        "label": "What tasks do older learners most often want to accomplish?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_approach",
+        "label": "How do you adapt instruction to different access needs and prior experience?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_practice",
+        "label": "What helps a learner practise a task without pressure?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_followup",
+        "label": "What support is available after a training session?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_improvement",
+        "label": "Which design or training change would make learning easier?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      }
+    ]
+  },
+  {
+    "key": "ngo",
+    "title": "Community organization: inclusion and advocacy — UNAPPROVED draft",
+    "description": "Smart Cities, Silent Citizens: Community support and gaps in service access. Illustrative questions newly written for application exploration, not the approved study instrument. Replace this information with the reviewed participant information and consent process. Participation is voluntary; all questions after consent are optional. Do not record names, contact details, case identifiers, or identifiable stories. The final city list, eligibility, translations, and any scoring require researcher review.",
+    "questions": [
+      {
+        "id": "q_consent",
+        "label": "After receiving the study information and an opportunity to ask questions, do you freely agree to this interview?",
+        "kind": "boolean",
+        "required": true,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": null
+      },
+      {
+        "id": "q_work",
+        "label": "What kinds of support does your organization offer older residents?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_gaps",
+        "label": "Which groups or access needs are least well served?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_feedback",
+        "label": "How do residents describe problems and propose changes?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_partnership",
+        "label": "What helps or hinders coordination with service providers?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_priority",
+        "label": "What practical change should be prioritized?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      }
+    ]
+  },
+  {
+    "key": "clinical_professional",
+    "title": "Clinical professional: access and support needs — UNAPPROVED draft",
+    "description": "Smart Cities, Silent Citizens: General professional perspectives; no patient records. Illustrative questions newly written for application exploration, not the approved study instrument. Replace this information with the reviewed participant information and consent process. Participation is voluntary; all questions after consent are optional. Do not record names, contact details, case identifiers, or identifiable stories. The final city list, eligibility, translations, and any scoring require researcher review.",
+    "questions": [
+      {
+        "id": "q_consent",
+        "label": "After receiving the study information and an opportunity to ask questions, do you freely agree to this interview?",
+        "kind": "boolean",
+        "required": true,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": null
+      },
+      {
+        "id": "q_role",
+        "label": "What relevant responsibilities does your role cover?",
+        "kind": "text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_access_needs",
+        "label": "Which sensory, mobility, communication, or other access needs should service designers consider?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_communication",
+        "label": "What makes service information easier to understand and use?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_assistance",
+        "label": "How can assistance be offered while preserving a person's preferences?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_improvement",
+        "label": "What general improvement could reduce avoidable access difficulties?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      }
+    ]
+  },
+  {
+    "key": "legal_scholar",
+    "title": "Legal scholar: rights and digital access — UNAPPROVED draft",
+    "description": "Smart Cities, Silent Citizens: An exploratory legal perspective, not automated legal advice. Illustrative questions newly written for application exploration, not the approved study instrument. Replace this information with the reviewed participant information and consent process. Participation is voluntary; all questions after consent are optional. Do not record names, contact details, case identifiers, or identifiable stories. The final city list, eligibility, translations, and any scoring require researcher review.",
+    "questions": [
+      {
+        "id": "q_consent",
+        "label": "After receiving the study information and an opportunity to ask questions, do you freely agree to this interview?",
+        "kind": "boolean",
+        "required": true,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": null
+      },
+      {
+        "id": "q_area",
+        "label": "Which area of law or policy informs your perspective?",
+        "kind": "text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_rights",
+        "label": "What rights or duties are relevant when public services require digital access?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_alternative",
+        "label": "What questions arise when equivalent non-digital access is unavailable?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_redress",
+        "label": "What accessible routes for complaint or redress should be examined?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_documents",
+        "label": "Which public laws, policies, or guidance should the research team review?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      }
+    ]
+  },
+  {
+    "key": "field_observation",
+    "title": "Field observation: service-access encounter — UNAPPROVED draft",
+    "description": "Smart Cities, Silent Citizens: Notes about an authorized observation; no covert recording. Illustrative researcher-completed template, not an approved protocol. Use public or authorized materials and non-identifying notes. This form does not authorize observing, recording, or interviewing people without the applicable study process. All fields are optional; review and adapt before publication.",
+    "questions": [
+      {
+        "id": "q_city",
+        "label": "Which study city is relevant?",
+        "kind": "single",
+        "required": false,
+        "choices": [
+          {
+            "code": "delhi",
+            "label": "Delhi"
+          },
+          {
+            "code": "aizawl",
+            "label": "Aizawl"
+          },
+          {
+            "code": "chennai",
+            "label": "Chennai"
+          },
+          {
+            "code": "srinagar",
+            "label": "Srinagar"
+          }
+        ],
+        "min": null,
+        "max": null,
+        "show_if": null
+      },
+      {
+        "id": "q_context",
+        "label": "Describe the public service or interface being examined without identifying a person.",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": null
+      },
+      {
+        "id": "q_task",
+        "label": "What task or journey was being examined?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": null
+      },
+      {
+        "id": "q_features",
+        "label": "Which physical, language, information, or interface features helped or hindered access?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": null
+      },
+      {
+        "id": "q_support",
+        "label": "What assistance or alternative channel was available?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": null
+      },
+      {
+        "id": "q_reflection",
+        "label": "Separate direct observations from the researcher's interpretation.",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": null
+      }
+    ]
+  },
+  {
+    "key": "focus_group",
+    "title": "Focus group: facilitated discussion log — UNAPPROVED draft",
+    "description": "Smart Cities, Silent Citizens: facilitator notes after the reviewed group information, consent, and privacy process. Illustrative template, not an approved protocol. The consent gate only confirms that the facilitator completed the separate group process; it does not replace individual agreement. Keep notes non-identifying and explain limits of confidentiality. All fields after this gate are optional; review and adapt before publication.",
+    "questions": [
+      {
+        "id": "q_consent",
+        "label": "Has the facilitator confirmed the participating group's agreement using the reviewed information and consent process?",
+        "kind": "boolean",
+        "required": true,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": null
+      },
+      {
+        "id": "q_session_code",
+        "label": "Non-identifying session code",
+        "kind": "text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_consent_process",
+        "label": "Record completion of the approved group information and consent process without individual identifiers.",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_shared_experiences",
+        "label": "What common experiences of city-service access were discussed?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_differences",
+        "label": "What different viewpoints or experiences should be retained?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_priorities",
+        "label": "Which improvements did participants identify?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      },
+      {
+        "id": "q_facilitation",
+        "label": "Note limitations of participation or facilitation without identifying speakers.",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": {
+          "question_id": "q_consent",
+          "equals": true
+        }
+      }
+    ]
+  },
+  {
+    "key": "policy_review",
+    "title": "Policy document: accessibility review — UNAPPROVED draft",
+    "description": "Smart Cities, Silent Citizens: A structured review of public or authorized source documents. Illustrative researcher-completed template, not an approved protocol. Use public or authorized materials and non-identifying notes. This form does not authorize observing, recording, or interviewing people without the applicable study process. All fields are optional; review and adapt before publication.",
+    "questions": [
+      {
+        "id": "q_document_title",
+        "label": "Document title or public reference",
+        "kind": "text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": null
+      },
+      {
+        "id": "q_document_date",
+        "label": "Publication date, where known",
+        "kind": "date",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": null
+      },
+      {
+        "id": "q_scope",
+        "label": "What service, jurisdiction, or population does the document address?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": null
+      },
+      {
+        "id": "q_access_commitments",
+        "label": "What explicit commitments relate to accessible or alternative service channels?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": null
+      },
+      {
+        "id": "q_evidence",
+        "label": "Record source section/page references and distinguish quotations from interpretation.",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": null
+      },
+      {
+        "id": "q_gaps",
+        "label": "What gaps or questions require further investigation?",
+        "kind": "long_text",
+        "required": false,
+        "choices": [],
+        "min": null,
+        "max": null,
+        "show_if": null
+      }
+    ]
+  }
+]

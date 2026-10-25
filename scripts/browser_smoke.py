@@ -100,7 +100,7 @@ def main():
                     page.get_by_label('Login ID', exact=True).fill('browser-collector')
                     page.get_by_label('One-time activation code', exact=True).fill(invitation['activation_code'])
                     page.get_by_label('Choose a password', exact=True).fill(secrets.token_urlsafe(24))
-                    page.get_by_role('button', name='Activate account', exact=True).click()
+                    page.locator('.auth-form').get_by_role('button', name='Activate account', exact=True).click()
                     print('Browser: administrator authoring/publication and collector activation passed.', flush=True)
                     page.get_by_role('button', name=re.compile(r'^Field collection(?:\s*\d+)?$')).click()
                     page.get_by_label('Questionnaire', exact=True).select_option(form['id'])

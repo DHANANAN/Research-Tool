@@ -1,0 +1,19 @@
+# Persistent SQLite needs a disk. This example uses a paid Render service;
+# applying this blueprint may incur hosting charges. It is not auto-deployed.
+services:
+  - type: web
+    name: research-tool
+    runtime: docker
+    plan: starter
+    healthCheckPath: /api/health
+    envVars:
+      - key: RESEARCH_BIND
+        value: 0.0.0.0:3000
+      - key: RESEARCH_DB_PATH
+        value: /data/research.sqlite3
+      - key: RESEARCH_SECURE_COOKIES
+        value: "true"
+    disk:
+      name: research-data
+      mountPath: /data
+      sizeGB: 1

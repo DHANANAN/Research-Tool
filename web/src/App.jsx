@@ -48,6 +48,13 @@ import {
 } from "lucide-react";
 import { api, downloadWorkbook } from "./api.js";
 import * as storage from "./storage.js";
+import {
+  enterDemo,
+  exitDemo,
+  isDemoMode,
+  enableDemoMode,
+  DEMO_ACCOUNTS,
+} from "./demo.js";
 
 const NAV = [
   ["overview", "Study overview", LayoutDashboard],
@@ -312,7 +319,9 @@ export default function App() {
       await readQueue(boot.user.id);
       if (uploaded) {
         notify(
-          `${uploaded} ${uploaded === 1 ? "response" : "responses"} received by the server.`,
+          isDemoMode()
+            ? `${uploaded} ${uploaded === 1 ? "response" : "responses"} saved in the playground.`
+            : `${uploaded} ${uploaded === 1 ? "response" : "responses"} received by the server.`,
         );
         await refresh().catch(() => {});
       }
@@ -399,6 +408,28 @@ export default function App() {
       setEditor(null);
       setQueue([]);
       setOfflineSession(false);
+    } catch (error) {
+      notify(error.message, true);
+    }
+  };
+  const leavePlayground = async () => {
+    if (!canLeaveEditor()) return;
+    if (
+      queue.length &&
+      !window.confirm(
+        "Leave the playground with responses still waiting on this device? They will remain available to this same test account.",
+      )
+    )
+      return;
+    try {
+      await api("/api/auth/logout", { method: "POST", body: {} });
+      exitDemo();
+      await storage.del("session");
+      setBoot(null);
+      setEditor(null);
+      setQueue([]);
+      setOfflineSession(false);
+      setScreen("overview");
     } catch (error) {
       notify(error.message, true);
     }
@@ -554,6 +585,20 @@ export default function App() {
           </div>
         </header>
         <main>
+          {isDemoMode() && (
+            <section className="playground-banner" aria-label="Playground mode">
+              <div>
+                <strong>Guest playground</strong>
+                <span>
+                  Stored in this browser. Use fictional data. Live research
+                  records are separate.
+                </span>
+              </div>
+              <button type="button" onClick={leavePlayground}>
+                Leave playground <LogOut size={16} />
+              </button>
+            </section>
+          )}
           {storageError && (
             <Notice tone="danger" className="global-notice">
               <strong>Local saving needs attention.</strong> {storageError}{" "}
@@ -769,126 +814,431 @@ function Brand() {
   );
 }
 function Auth({ onSuccess, online, message }) {
-  const [tab, setTab] = useState("login"),
-    [values, setValues] = useState({
-      login_id: "", password: "", activation_code: "",
-      org_name: "", name: "", token: "",
-    }),
-    [error, setError] = useState(""),
-    [busy, setBusy] = useState(false);
-  const set = (k) => (e) => setValues((v) => ({ ...v, [k]: e.target.value }));
-  const switchTab = (t) => { setTab(t); setError(""); };
-  const submit = async (e) => {
-    e.preventDefault();
-    if (!online) { setError("First sign-in and account activation require an internet connection."); return; }
-    setBusy(true); setError("");
-    try {
-      const path =
-        tab === "login" ? "/api/auth/login" :
-        tab === "activate" ? "/api/auth/activate" :
-        tab === "register" ? "/api/auth/register" :
-        "/api/auth/join";
-      const body =
-        tab === "login"
-          ? { login_id: values.login_id, password: values.password }
-          : tab === "activate"
-          ? { login_id: values.login_id, activation_code: values.activation_code, password: values.password }
-          : tab === "register"
-          ? { org_name: values.org_name, login_id: values.login_id, name: values.name, password: values.password }
-          : { token: values.token, login_id: values.login_id, name: values.name, password: values.password };
-      await api(path, { method: "POST", body });
-      setValues({ login_id: "", password: "", activation_code: "", org_name: "", name: "", token: "" });
-      await onSuccess();
-    } catch (e) { setError(e.message); }
-    finally { setBusy(false); }
+  const [tab, setTab] = useState("login");
+  const [values, setValues] = useState({
+    login_id: "",
+    password: "",
+    activation_code: "",
+    org_name: "",
+    name: "",
+    token: "",
+  });
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [playground, setPlayground] = useState(isDemoMode());
+  const [showGuests, setShowGuests] = useState(false);
+  const set = (key) => (event) =>
+    setValues((current) => ({ ...current, [key]: event.target.value }));
+  const switchTab = (next) => {
+    setTab(next);
+    setError("");
   };
+  const openGuest = async (loginId) => {
+    setBusy(true);
+    setError("");
+    try {
+      await enterDemo(loginId);
+      await onSuccess();
+    } catch (failure) {
+      setError(failure.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const submit = async (event) => {
+    event.preventDefault();
+    const guest = DEMO_ACCOUNTS.find(
+      (account) => account.login_id === values.login_id.trim(),
+    );
+    const local = playground || (tab === "login" && guest);
+    if (!online && !local) {
+      setError(
+        "Connect to create or access a live account. The playground works on this device.",
+      );
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      if (tab === "login" && guest) {
+        if (values.password !== "ResearchDemo2026!")
+          throw new Error(
+            "Use the public test password ResearchDemo2026!, or choose a profile under Explore demo.",
+          );
+        await enterDemo(guest.login_id);
+      } else {
+        if (playground) enableDemoMode();
+        else if (isDemoMode()) exitDemo();
+        const path = {
+          login: "/api/auth/login",
+          activate: "/api/auth/activate",
+          register: "/api/auth/register",
+          join: "/api/auth/join",
+        }[tab];
+        const body =
+          tab === "login"
+            ? { login_id: values.login_id, password: values.password }
+            : tab === "activate"
+              ? {
+                  login_id: values.login_id,
+                  activation_code: values.activation_code,
+                  password: values.password,
+                }
+              : tab === "register"
+                ? {
+                    org_name: values.org_name,
+                    login_id: values.login_id,
+                    name: values.name,
+                    password: values.password,
+                  }
+                : {
+                    token: values.token,
+                    login_id: values.login_id,
+                    name: values.name,
+                    password: values.password,
+                  };
+        await api(path, { method: "POST", body });
+      }
+      setValues({
+        login_id: "",
+        password: "",
+        activation_code: "",
+        org_name: "",
+        name: "",
+        token: "",
+      });
+      await onSuccess();
+    } catch (failure) {
+      setError(
+        [404, 503].includes(failure.status)
+          ? "The live account service is unavailable. Choose Explore demo to try the tool now, or create a playground organization on this device."
+          : failure.message,
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+  const tabs = [
+    ["login", "Sign in"],
+    ["register", "Create organization"],
+    ["join", "Join a team"],
+    ["activate", "Activate account"],
+  ];
   return (
     <div className="auth-page">
       <div className="auth-story">
         <Brand />
         <div className="auth-story-main">
-          <span className="eyebrow">RESEARCH THAT REACHES PEOPLE</span>
-          <h1>Every voice.<br />A meaningful<br /><em>part of the story.</em></h1>
-          <p>A connected workspace to build thoughtful questionnaires, listen in the field, and turn answers into useful research.</p>
+          <span className="eyebrow">RESEARCH MANAGEMENT SUITE</span>
+          <h1>
+            Your questions.
+            <br />
+            Your field team.
+            <br />
+            <em>Your research.</em>
+          </h1>
+          <p>
+            Create questionnaires, collect answers, and download a dataset you
+            can analyze. Start an organization or explore with the example
+            accounts.
+          </p>
           <div className="auth-principles">
-            <span><ShieldCheck size={16} /> Researcher owned</span>
-            <span><WifiOff size={16} /> Field ready</span>
-            <span><Globe2 size={16} /> Open source</span>
+            <span>
+              <ShieldCheck size={18} />
+              Researcher owned
+            </span>
+            <span>
+              <WifiOff size={18} />
+              Offline fieldwork
+            </span>
+            <span>
+              <Globe2 size={18} />
+              Open source
+            </span>
+          </div>
+          <div className="auth-example-note">
+            <strong>Smart Cities, Silent Citizens</strong>
+            <p>
+              An editable example study helps you try questionnaires,
+              collection, and Excel exports. Its sample content is for
+              demonstration.
+            </p>
           </div>
         </div>
-        <span className="auth-footnote">Built for real questions. Designed for the people behind them.</span>
-        <div className="auth-orbit orbit-1" />
-        <div className="auth-orbit orbit-2" />
+        <span className="auth-footnote">
+          A familiar research portal. Built for any study.
+        </span>
       </div>
       <div className="auth-form-area">
-        <span className="pilot-badge"><span />Development pilot</span>
-        <div className="auth-tabs">
-          <button type="button" className={tab === "login" ? "active" : ""} onClick={() => switchTab("login")}>Sign in</button>
-          <button type="button" className={tab === "activate" ? "active" : ""} onClick={() => switchTab("activate")}>Activate</button>
-          <button type="button" className={tab === "register" ? "active" : ""} onClick={() => switchTab("register")}>Create org</button>
-          <button type="button" className={tab === "join" ? "active" : ""} onClick={() => switchTab("join")}>Join via invite</button>
+        <div className="auth-entry-heading">
+          <span className="eyebrow">WELCOME TO RESEARCH-TOOL</span>
+          <h2>Open your workspace</h2>
+          <p>Sign in, create an organization, or take a look around.</p>
+        </div>
+        <section className="guest-entry" aria-label="Guest access">
+          <div className="guest-entry-heading">
+            <div>
+              <strong>Try the complete workflow</strong>
+              <p>
+                No personal account needed. Your playground stays in this
+                browser.
+              </p>
+            </div>
+            <Button
+              variant="secondary"
+              icon={Users}
+              disabled={busy}
+              onClick={() => setShowGuests(!showGuests)}
+              aria-expanded={showGuests}
+            >
+              Explore demo
+            </Button>
+          </div>
+          {showGuests && (
+            <div className="guest-profiles">
+              <p className="guest-credentials">
+                Four test accounts · password: <code>ResearchDemo2026!</code>
+              </p>
+              <div className="guest-profile-grid">
+                {DEMO_ACCOUNTS.map((account, index) => (
+                  <button
+                    type="button"
+                    className="guest-profile"
+                    disabled={busy}
+                    key={account.login_id}
+                    onClick={() => openGuest(account.login_id)}
+                  >
+                    <span className="guest-profile-icon">
+                      {account.role === "admin" ? (
+                        <Settings2 size={20} />
+                      ) : (
+                        <ClipboardList size={20} />
+                      )}
+                    </span>
+                    <strong>
+                      {account.role === "admin"
+                        ? "Guest administrator"
+                        : `Guest surveyor ${index}`}
+                    </strong>
+                    <span>
+                      {account.role === "admin"
+                        ? "Create and edit questionnaires; view and export responses."
+                        : "Collect fictional answers and test fieldwork."}
+                    </span>
+                    <code>{account.login_id}</code>
+                  </button>
+                ))}
+              </div>
+              <p className="guest-data-note">
+                Playground: stored in this browser. Use fictional data. This is
+                separate from live research accounts.
+              </p>
+            </div>
+          )}
+        </section>
+        <div className="auth-tabs" aria-label="Account access">
+          {tabs.map(([key, label]) => (
+            <button
+              type="button"
+              key={key}
+              aria-pressed={tab === key}
+              className={tab === key ? "active" : ""}
+              onClick={() => switchTab(key)}
+            >
+              {label}
+            </button>
+          ))}
         </div>
         <form className="auth-form" onSubmit={submit}>
-          <div className="auth-icon">
-            {tab === "register" ? <Plus size={28} /> : tab === "join" ? <Users size={28} /> : <BookOpen size={28} />}
-          </div>
-          <span className="eyebrow">YOUR RESEARCH WORKSPACE</span>
-          <h2>
-            {tab === "login" ? "Welcome back." :
-             tab === "activate" ? "Join your research team." :
-             tab === "register" ? "Create your organisation." :
-             "Join an organisation."}
-          </h2>
+          <h3>
+            {tab === "login"
+              ? "Sign in to your account"
+              : tab === "register"
+                ? "Create an organization and administrator account"
+                : tab === "join"
+                  ? "Join your research team"
+                  : "Activate your surveyor account"}
+          </h3>
           <p>
             {tab === "login"
-              ? "Sign in to continue your study, manage questionnaires, or collect in the field."
-              : tab === "activate"
-              ? "Use the invitation your administrator shared with you and choose your own password."
+              ? "Use your own login ID or one of the test accounts above."
               : tab === "register"
-              ? "Start fresh — create your organisation and administrator account in seconds."
-              : "Use an invite token shared by your organisation admin to join and set your own password."}
+                ? "Your organization brings your research team, questionnaires, and studies together."
+                : tab === "join"
+                  ? "Enter the invitation code shared by your administrator."
+                  : "Use the one-time code supplied by your study administrator."}
           </p>
-          {(error || message?.error) && <Notice tone="danger">{error || message.text}</Notice>}
-
-          {tab === "login" && (<>
-            <label>Login ID<input required autoComplete="username" value={values.login_id} onChange={set("login_id")} placeholder="Your login ID" /></label>
-            <label>Password<input required type="password" autoComplete="current-password" value={values.password} onChange={set("password")} placeholder="Enter your password" /></label>
-          </>)}
-
-          {tab === "activate" && (<>
-            <label>Login ID<input required autoComplete="username" value={values.login_id} onChange={set("login_id")} placeholder="Your administrator-assigned ID" /></label>
-            <label>One-time activation code<input required autoComplete="off" value={values.activation_code} onChange={set("activation_code")} placeholder="Enter your invitation code" /></label>
-            <label>Choose a password<input required type="password" minLength={12} autoComplete="new-password" value={values.password} onChange={set("password")} placeholder="At least 12 characters" /></label>
-          </>)}
-
-          {tab === "register" && (<>
-            <label>Organisation name<input required value={values.org_name} onChange={set("org_name")} placeholder="Your institution or research group" /></label>
-            <label>Your full name<input required value={values.name} onChange={set("name")} placeholder="Administrator name" /></label>
-            <label>Choose a login ID<input required autoComplete="username" value={values.login_id} onChange={set("login_id")} placeholder="e.g. admin or your email" /></label>
-            <label>Password<input required type="password" minLength={12} autoComplete="new-password" value={values.password} onChange={set("password")} placeholder="At least 12 characters" /></label>
-          </>)}
-
-          {tab === "join" && (<>
-            <label>Invitation code<input required autoComplete="off" value={values.token} onChange={set("token")} placeholder="e.g. INV-A7K9-M3Q2 or code from your administrator" /></label>
-            <label>Your full name<input required value={values.name} onChange={set("name")} placeholder="Your name" /></label>
-            <label>Choose a login ID<input required autoComplete="username" value={values.login_id} onChange={set("login_id")} placeholder="e.g. your email or surveyor ID" /></label>
-            <label>Choose a password<input required type="password" minLength={12} autoComplete="new-password" value={values.password} onChange={set("password")} placeholder="At least 12 characters" /></label>
-          </>)}
-
-          <Button type="submit" disabled={busy || !online} icon={busy ? LoaderCircle : ArrowRight}>
-            {busy ? "Opening workspace…" :
-             tab === "login" ? "Sign in to workspace" :
-             tab === "activate" ? "Activate account" :
-             tab === "register" ? "Create organisation" :
-             "Join organisation"}
+          {(error || message?.error) && (
+            <div role="alert">
+              <Notice tone="danger">{error || message.text}</Notice>
+            </div>
+          )}
+          {tab === "register" && (
+            <label>
+              Organization name
+              <input
+                aria-label="Organization name"
+                required
+                autoComplete="organization"
+                value={values.org_name}
+                onChange={set("org_name")}
+                placeholder="Institution or research group"
+              />
+            </label>
+          )}
+          {["register", "join"].includes(tab) && (
+            <label>
+              Your full name
+              <input
+                aria-label="Your full name"
+                required
+                autoComplete="name"
+                value={values.name}
+                onChange={set("name")}
+                placeholder="Your name"
+              />
+            </label>
+          )}
+          {tab === "join" && (
+            <label>
+              Invitation code
+              <input
+                aria-label="Invitation code"
+                required
+                autoComplete="off"
+                value={values.token}
+                onChange={set("token")}
+                placeholder="Code from your administrator"
+              />
+            </label>
+          )}
+          <label>
+            {["register", "join"].includes(tab)
+              ? "Choose a login ID"
+              : "Login ID"}
+            <input
+              aria-label={
+                ["register", "join"].includes(tab)
+                  ? "Choose a login ID"
+                  : "Login ID"
+              }
+              required
+              autoComplete="username"
+              value={values.login_id}
+              onChange={set("login_id")}
+              placeholder={
+                tab === "login"
+                  ? "Your login ID"
+                  : "For example, your email or team ID"
+              }
+            />
+          </label>
+          {tab === "activate" && (
+            <label>
+              One-time activation code
+              <input
+                aria-label="One-time activation code"
+                required
+                autoComplete="off"
+                value={values.activation_code}
+                onChange={set("activation_code")}
+                placeholder="Enter your activation code"
+              />
+            </label>
+          )}
+          <label>
+            {["join", "activate"].includes(tab)
+              ? "Choose a password"
+              : "Password"}
+            <input
+              aria-label={
+                ["join", "activate"].includes(tab)
+                  ? "Choose a password"
+                  : "Password"
+              }
+              required
+              type="password"
+              minLength={tab === "login" ? undefined : 12}
+              autoComplete={
+                tab === "login" ? "current-password" : "new-password"
+              }
+              value={values.password}
+              onChange={set("password")}
+              placeholder={
+                tab === "login"
+                  ? "Enter your password"
+                  : "At least 12 characters"
+              }
+            />
+          </label>
+          <label className="auth-playground-toggle">
+            <input
+              type="checkbox"
+              checked={playground}
+              onChange={(event) => setPlayground(event.target.checked)}
+            />
+            <span>
+              <strong>
+                {tab === "register"
+                  ? "Create this organization in the local playground"
+                  : "Use the local playground"}
+              </strong>
+              <small>
+                Practice on this browser with fictional information. Live
+                accounts require the online service.
+              </small>
+            </span>
+          </label>
+          <Button
+            type="submit"
+            disabled={
+              busy ||
+              (!online &&
+                !playground &&
+                !(
+                  tab === "login" &&
+                  DEMO_ACCOUNTS.some(
+                    (account) => account.login_id === values.login_id.trim(),
+                  )
+                ))
+            }
+            icon={busy ? LoaderCircle : ArrowRight}
+          >
+            {busy
+              ? "Opening workspace…"
+              : tab === "login"
+                ? "Sign in to workspace"
+                : tab === "register"
+                  ? "Create organization"
+                  : tab === "join"
+                    ? "Join organization"
+                    : "Activate account"}
           </Button>
-          {!online && <Notice tone="warning">Connect to sign in. Offline work is available only after this device has been signed in and forms downloaded.</Notice>}
+          {tab === "login" && (
+            <button
+              type="button"
+              className="text-button auth-toggle"
+              onClick={() => switchTab("activate")}
+            >
+              Have an invitation? Activate your account
+            </button>
+          )}
+          {!online && (
+            <Notice tone="warning">
+              You are offline. Choose a playground profile to explore, or
+              reconnect to use a live account.
+            </Notice>
+          )}
           <div className="auth-help">
-            <CircleHelp size={16} />
-            <span>Need access or a password reset? Contact your study administrator.</span>
+            <CircleHelp size={17} />
+            <span>
+              Need help with a live account? Contact your study administrator.
+            </span>
           </div>
         </form>
-        <span className="auth-copyright">Research-Tool · An open-source research workspace</span>
+        <span className="auth-copyright">
+          Research-Tool · An open-source research workspace
+        </span>
       </div>
     </div>
   );
@@ -2457,7 +2807,9 @@ function Collection({
       setReviewing(false);
       await refreshQueue();
       notify(
-        "Response saved on this device. It is pending until a server receipt confirms upload.",
+        isDemoMode()
+          ? "Response queued on this device for the local playground."
+          : "Response saved on this device. It is pending until a server receipt confirms upload.",
       );
       if (navigator.onLine) await sync();
     } catch (error) {
@@ -2513,7 +2865,11 @@ function Collection({
       <PageHeading
         eyebrow="LISTEN. RECORD. UNDERSTAND."
         title="Field collection"
-        description="Use a published questionnaire, save your work on this device, and upload when connected."
+        description={
+          isDemoMode()
+            ? "Try a published example questionnaire and save fictional answers in this browser."
+            : "Use a published questionnaire, save your work on this device, and upload when connected."
+        }
       >
         <Button
           icon={syncing ? LoaderCircle : RefreshCw}
@@ -2629,9 +2985,9 @@ function Collection({
                       </div>
                     ))}
                   <Notice>
-                    Submitting queues this interview for upload. It becomes a
-                    confirmed submission only after the server acknowledges it.
-                    Submitted answers cannot be edited by the collector.
+                    {isDemoMode()
+                      ? "Submitting saves this fictional interview to the playground in this browser. It is not uploaded to the live research service."
+                      : "Submitting queues this interview for upload. It becomes a confirmed submission only after the server acknowledges it. Submitted answers cannot be edited by the collector."}
                   </Notice>
                 </div>
               ) : (
@@ -2699,9 +3055,11 @@ function Collection({
                 : "Working without a connection"}
             </h3>
             <p>
-              {online
-                ? "Save locally first. Uploads are confirmed only by a verified server receipt."
-                : "Downloaded assignments and saved drafts stay on this device. Reconnect to upload."}
+              {isDemoMode()
+                ? "This playground records fictional interviews in this browser. It does not upload them to the live service."
+                : online
+                  ? "Save locally first. Uploads are confirmed only by a verified server receipt."
+                  : "Downloaded assignments and saved drafts stay on this device. Reconnect to upload."}
             </p>
             <div className="queue-total">
               <strong>{projectQueue.length}</strong>
@@ -2741,7 +3099,11 @@ function Collection({
         <section className="panel queue-panel">
           <PanelHeading
             title="Saved on this device"
-            description="These responses have not yet received server confirmation."
+            description={
+              isDemoMode()
+                ? "These interviews are waiting to be recorded in this browser's playground."
+                : "These responses have not yet received server confirmation."
+            }
           />
           {projectQueue.map((item) => (
             <div className="queue-row" key={item.key}>
@@ -2832,7 +3194,11 @@ function Responses({ project, user, forms, online, onExport, notify }) {
       <PageHeading
         eyebrow="FROM ANSWERS TO INSIGHT"
         title="Responses & exports"
-        description="Confirmed server submissions, with question codes and form versions kept intact."
+        description={
+          isDemoMode()
+            ? "Playground responses stored in this browser, with question codes and form versions kept intact."
+            : "Confirmed server submissions, with question codes and form versions kept intact."
+        }
       >
         <Button
           variant="secondary"
@@ -2860,7 +3226,10 @@ function Responses({ project, user, forms, online, onExport, notify }) {
           <div>
             <strong>{shown.length}</strong>
             <span>
-              {formFilter ? "matching" : "visible"} server-confirmed responses
+              {formFilter ? "matching" : "visible"}{" "}
+              {isDemoMode()
+                ? "playground responses"
+                : "server-confirmed responses"}
             </span>
           </div>
         </div>
@@ -2910,7 +3279,11 @@ function Responses({ project, user, forms, online, onExport, notify }) {
                 ? "Loading your study responses…"
                 : "Every meaningful dataset starts with a first answer."
             }
-            description="Once a field response is uploaded and confirmed, it appears here. Your Excel export includes the response table and a codebook."
+            description={
+              isDemoMode()
+                ? "Save a fictional interview in Field collection to see it here. Your playground Excel export includes its answers and a codebook."
+                : "Once a field response is uploaded and confirmed, it appears here. Your Excel export includes the response table and a codebook."
+            }
           />
         ) : (
           <div className="table-scroll">
@@ -3021,30 +3394,60 @@ function Team({ project, online, notify, refresh }) {
     [busy, setBusy] = useState(false);
   const load = useCallback(async () => {
     if (!project || !navigator.onLine) return;
-    try { setMembers(await api(`/api/projects/${project.id}/members`)); }
-    catch (e) { notify(e.message, true); }
+    try {
+      setMembers(await api(`/api/projects/${project.id}/members`));
+    } catch (e) {
+      notify(e.message, true);
+    }
   }, [project?.id, notify]);
   const loadOrgInvites = useCallback(async () => {
     if (!navigator.onLine) return;
-    try { const d = await api("/api/org/invite"); setOrgInvites(d.tokens || []); }
-    catch (_) { /* account may not have an org */ }
+    try {
+      const d = await api("/api/org/invite");
+      setOrgInvites(d.tokens || []);
+    } catch (_) {
+      /* account may not have an org */
+    }
   }, []);
   useEffect(() => {
-    setMembers([]); setInvitation(null); setNewOrgInvite(null);
-    load(); loadOrgInvites();
+    setMembers([]);
+    setInvitation(null);
+    setNewOrgInvite(null);
+    load();
+    loadOrgInvites();
   }, [load, loadOrgInvites]);
   const invite = async (values) => {
     setBusy(true);
     try {
-      const result = await api(`/api/projects/${project.id}/members`, { method: "POST", body: values });
+      const result = await api(`/api/projects/${project.id}/members`, {
+        method: "POST",
+        body: values,
+      });
       setInvitation(result.activation_code ? result : null);
       setInviteOpen(false);
-      await load(); await refresh();
-      notify(result.existing
-        ? "Existing surveyor assigned to this study. Their current account remains unchanged."
-        : "Surveyor account created. Share the one-time activation code securely.");
-    } catch (e) { notify(e.message, true); }
-    finally { setBusy(false); }
+      await load();
+      await refresh();
+      notify(
+        result.existing
+          ? "Existing surveyor assigned to this study. Their current account remains unchanged."
+          : "Surveyor account created. Share the one-time activation code securely.",
+      );
+    } catch (e) {
+      notify(e.message, true);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const copyInvitationCode = async (code) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      notify("Invitation code copied to clipboard.");
+    } catch {
+      notify(
+        "Clipboard access is unavailable. Select and copy the displayed invitation code.",
+        true,
+      );
+    }
   };
   const createOrgInvite = async (e) => {
     e.preventDefault();
@@ -3053,15 +3456,21 @@ function Team({ project, online, notify, refresh }) {
     try {
       const result = await api("/api/org/invite", {
         method: "POST",
-        body: { label: orgInviteLabel.trim(), code: orgInviteCode.trim() || undefined },
+        body: {
+          label: orgInviteLabel.trim(),
+          code: orgInviteCode.trim() || undefined,
+        },
       });
       setNewOrgInvite(result);
       setOrgInviteLabel("");
       setOrgInviteCode("");
       await loadOrgInvites();
       notify("Invitation code generated. Share it with your surveyors.");
-    } catch (e) { notify(e.message, true); }
-    finally { setCreatingOrgInvite(false); }
+    } catch (e) {
+      notify(e.message, true);
+    } finally {
+      setCreatingOrgInvite(false);
+    }
   };
   return (
     <>
@@ -3070,15 +3479,24 @@ function Team({ project, online, notify, refresh }) {
         title="Research team"
         description="Give every surveyor their own identity and access to this study's published questionnaires."
       >
-        <Button icon={Plus} disabled={!project || !online} onClick={() => setInviteOpen(true)}>
+        <Button
+          icon={Plus}
+          disabled={!project || !online}
+          onClick={() => setInviteOpen(true)}
+        >
           Add field surveyor
         </Button>
       </PageHeading>
       <div className="team-callout">
-        <span className="small-icon"><Users size={24} /></span>
+        <span className="small-icon">
+          <Users size={24} />
+        </span>
         <div>
           <h3>One person. One account. Clear responsibility.</h3>
-          <p>Surveyors and invigilators collect assigned project data. Administrators manage questions, team access, and exports.</p>
+          <p>
+            Surveyors and invigilators collect assigned project data.
+            Administrators manage questions, team access, and exports.
+          </p>
         </div>
         <ShieldCheck size={27} />
       </div>
@@ -3089,102 +3507,275 @@ function Team({ project, online, notify, refresh }) {
           <div className="panel-heading">
             <div>
               <h3>Share this invitation securely</h3>
-              <p>The code is displayed for this invitation only. It is not stored in your browser.</p>
+              <p>
+                The code is displayed for this invitation only. It is not stored
+                in your browser.
+              </p>
             </div>
-            <button className="icon-btn" aria-label="Dismiss activation code" onClick={() => setInvitation(null)}><X size={19} /></button>
+            <button
+              className="icon-btn"
+              aria-label="Dismiss activation code"
+              onClick={() => setInvitation(null)}
+            >
+              <X size={19} />
+            </button>
           </div>
           <div className="invitation-values">
-            <div><label>Login ID</label><strong className="mono">{invitation.user.login_id}</strong></div>
-            <div><label>One-time activation code</label><strong className="mono activation-code">{invitation.activation_code}</strong></div>
+            <div>
+              <label>Login ID</label>
+              <strong className="mono">{invitation.user.login_id}</strong>
+            </div>
+            <div>
+              <label>One-time activation code</label>
+              <strong className="mono activation-code">
+                {invitation.activation_code}
+              </strong>
+            </div>
           </div>
-          <Notice>The surveyor selects the "Activate" tab on the sign-in screen, enters this ID and code, and chooses their own password.</Notice>
+          <Notice>
+            The surveyor selects the "Activate account" tab on the sign-in
+            screen, enters this ID and code, and chooses their own password.
+          </Notice>
         </section>
       )}
 
       {/* Org-level invite token panel */}
       {online && (
-        <section className="panel">
+        <section className="panel org-invites-panel">
           <PanelHeading
-            title="Organisation invitation codes"
+            title="Organization invitation codes"
             description="Create an invitation code for your organisation. Surveyors register using this code on the sign-in page and instantly get access to your studies."
           />
           {newOrgInvite && (
-            <div className="invitation-result" style={{marginBottom:"1.25rem"}}>
-              <div className="panel-heading" style={{marginBottom:".5rem"}}>
+            <div
+              className="invitation-result"
+              style={{ marginBottom: "1.25rem" }}
+            >
+              <div className="panel-heading" style={{ marginBottom: ".5rem" }}>
                 <div>
-                  <h3 style={{marginBottom:".2rem"}}>Invitation code ready — copy and share</h3>
-                  <p style={{fontSize:".85rem",opacity:".75"}}>Surveyors select &quot;Join via invite&quot; on the sign-in screen, enter this code, and set their credentials.</p>
+                  <h3 style={{ marginBottom: ".2rem" }}>
+                    Invitation code ready — copy and share
+                  </h3>
+                  <p style={{ fontSize: ".85rem", opacity: ".75" }}>
+                    Surveyors select &quot;Join a team&quot; on the sign-in
+                    screen, enter this code, and set their credentials.
+                  </p>
                 </div>
-                <button className="icon-btn" onClick={() => setNewOrgInvite(null)} aria-label="Dismiss"><X size={18}/></button>
+                <button
+                  className="icon-btn"
+                  onClick={() => setNewOrgInvite(null)}
+                  aria-label="Dismiss"
+                >
+                  <X size={18} />
+                </button>
               </div>
-              <div className="invitation-values" style={{alignItems:"center",gap:"1.5rem"}}>
-                <div><label>Label</label><strong>{newOrgInvite.label}</strong></div>
+              <div
+                className="invitation-values"
+                style={{ alignItems: "center", gap: "1.5rem" }}
+              >
+                <div>
+                  <label>Label</label>
+                  <strong>{newOrgInvite.label}</strong>
+                </div>
                 <div>
                   <label>Invitation code</label>
-                  <strong className="mono activation-code" style={{fontSize:"1.1rem",letterSpacing:".5px"}}>{newOrgInvite.code || newOrgInvite.token}</strong>
+                  <strong
+                    className="mono activation-code"
+                    style={{ fontSize: "1.1rem", letterSpacing: ".5px" }}
+                  >
+                    {newOrgInvite.code || newOrgInvite.token}
+                  </strong>
                 </div>
-                <button className="button" type="button" onClick={() => { navigator.clipboard.writeText(newOrgInvite.code || newOrgInvite.token); notify("Invitation code copied to clipboard."); }} style={{marginLeft:"auto"}}>
-                  <Copy size={16}/> Copy code
+                <button
+                  className="button"
+                  type="button"
+                  onClick={() =>
+                    copyInvitationCode(newOrgInvite.code || newOrgInvite.token)
+                  }
+                  style={{ marginLeft: "auto" }}
+                >
+                  <Copy size={16} /> Copy code
                 </button>
               </div>
             </div>
           )}
-          <form onSubmit={createOrgInvite} style={{display:"flex",gap:".75rem",alignItems:"flex-end",flexWrap:"wrap",marginBottom:"1.25rem"}}>
-            <label style={{flex:2,minWidth:"220px",marginBottom:0}}>
+          <form
+            onSubmit={createOrgInvite}
+            style={{
+              display: "flex",
+              gap: ".75rem",
+              alignItems: "flex-end",
+              flexWrap: "wrap",
+              marginBottom: "1.25rem",
+            }}
+          >
+            <label style={{ flex: 2, minWidth: "220px", marginBottom: 0 }}>
               Group / study label
-              <input value={orgInviteLabel} onChange={e => setOrgInviteLabel(e.target.value)} placeholder="e.g. Batch 2026 field team" required />
+              <input
+                value={orgInviteLabel}
+                onChange={(e) => setOrgInviteLabel(e.target.value)}
+                placeholder="e.g. Batch 2026 field team"
+                required
+              />
             </label>
-            <label style={{flex:1,minWidth:"160px",marginBottom:0}}>
+            <label style={{ flex: 1, minWidth: "160px", marginBottom: 0 }}>
               Custom code (optional)
-              <input value={orgInviteCode} onChange={e => setOrgInviteCode(e.target.value)} placeholder="Leave blank to auto-generate" />
+              <input
+                value={orgInviteCode}
+                onChange={(e) => setOrgInviteCode(e.target.value)}
+                placeholder="Leave blank to auto-generate"
+              />
             </label>
-            <Button type="submit" icon={creatingOrgInvite ? LoaderCircle : Plus} disabled={creatingOrgInvite}>
+            <Button
+              type="submit"
+              icon={creatingOrgInvite ? LoaderCircle : Plus}
+              disabled={creatingOrgInvite}
+            >
               {creatingOrgInvite ? "Creating…" : "Generate invite code"}
             </Button>
           </form>
           {orgInvites.length > 0 && (
-            <div style={{display:"grid",gap:"1rem"}}>
-              {orgInvites.map(t => {
+            <div style={{ display: "grid", gap: "1rem" }}>
+              {orgInvites.map((t) => {
                 const code = t.code || t.token;
                 const enrolled = t.members || [];
                 return (
-                  <div key={t.id} style={{background:"var(--surface-sunken,#161a22)",border:"1px solid var(--border,#2c3240)",borderRadius:"8px",padding:"1rem"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:".75rem",flexWrap:"wrap",marginBottom:".5rem"}}>
-                      <span className="avatar light"><Radio size={15}/></span>
-                      <div style={{flex:1,minWidth:"200px"}}>
-                        <strong style={{fontSize:"1rem"}}>{t.label}</strong>
-                        <div className="mono" style={{fontSize:".78rem",opacity:".65",marginTop:"2px"}}>
+                  <div
+                    key={t.id}
+                    style={{
+                      background: "var(--surface-sunken,#161a22)",
+                      border: "1px solid var(--border,#2c3240)",
+                      borderRadius: "8px",
+                      padding: "1rem",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: ".75rem",
+                        flexWrap: "wrap",
+                        marginBottom: ".5rem",
+                      }}
+                    >
+                      <span className="avatar light">
+                        <Radio size={15} />
+                      </span>
+                      <div style={{ flex: 1, minWidth: "200px" }}>
+                        <strong style={{ fontSize: "1rem" }}>{t.label}</strong>
+                        <div
+                          className="mono"
+                          style={{
+                            fontSize: ".78rem",
+                            opacity: ".65",
+                            marginTop: "2px",
+                          }}
+                        >
                           Created by {t.created_by} · {fmtDate(t.created_at)}
                         </div>
                       </div>
-                      <div style={{display:"flex",alignItems:"center",gap:".5rem"}}>
-                        <span className="mono activation-code" style={{fontSize:".9rem",fontWeight:600,padding:".3rem .6rem",background:"var(--surface,#0d1117)",border:"1px solid var(--border,#30363d)",borderRadius:"6px",letterSpacing:".5px"}}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: ".5rem",
+                        }}
+                      >
+                        <span
+                          className="mono activation-code"
+                          style={{
+                            fontSize: ".9rem",
+                            fontWeight: 600,
+                            padding: ".3rem .6rem",
+                            background: "var(--surface,#0d1117)",
+                            border: "1px solid var(--border,#30363d)",
+                            borderRadius: "6px",
+                            letterSpacing: ".5px",
+                          }}
+                        >
                           {code}
                         </span>
-                        <button className="icon-btn" title="Copy invitation code" onClick={() => { navigator.clipboard.writeText(code); notify(`Code ${code} copied!`); }}>
-                          <Copy size={16}/>
+                        <button
+                          className="icon-btn"
+                          title="Copy invitation code"
+                          onClick={() => copyInvitationCode(code)}
+                        >
+                          <Copy size={16} />
                         </button>
                       </div>
-                      <span className={`badge ${enrolled.length ? "green" : "neutral"}`}>
-                        {enrolled.length} surveyor{enrolled.length === 1 ? "" : "s"} joined
+                      <span
+                        className={`badge ${enrolled.length ? "green" : "neutral"}`}
+                      >
+                        {enrolled.length} surveyor
+                        {enrolled.length === 1 ? "" : "s"} joined
                       </span>
                     </div>
 
                     {/* Enrolled surveyors list for this code */}
-                    <div style={{marginTop:".75rem",paddingTop:".75rem",borderTop:"1px solid var(--border,#2c3240)"}}>
-                      <div style={{fontSize:".75rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".05em",color:"var(--muted,#8b949e)",marginBottom:".4rem"}}>
-                        {enrolled.length ? `Registered surveyors (${enrolled.length}):` : "No surveyors have registered with this code yet."}
+                    <div
+                      style={{
+                        marginTop: ".75rem",
+                        paddingTop: ".75rem",
+                        borderTop: "1px solid var(--border,#2c3240)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: ".75rem",
+                          fontWeight: 600,
+                          textTransform: "uppercase",
+                          letterSpacing: ".05em",
+                          color: "var(--muted,#8b949e)",
+                          marginBottom: ".4rem",
+                        }}
+                      >
+                        {enrolled.length
+                          ? `Registered surveyors (${enrolled.length}):`
+                          : "No surveyors have registered with this code yet."}
                       </div>
                       {enrolled.length > 0 && (
-                        <div style={{display:"grid",gap:".35rem"}}>
-                          {enrolled.map(m => (
-                            <div key={m.id} style={{display:"flex",alignItems:"center",gap:".6rem",fontSize:".82rem",background:"rgba(255,255,255,0.02)",padding:".35rem .6rem",borderRadius:"4px",border:"1px solid rgba(255,255,255,0.04)"}}>
-                              <span className="avatar light" style={{width:"22px",height:"22px",fontSize:".68rem",minWidth:"22px"}}>
+                        <div style={{ display: "grid", gap: ".35rem" }}>
+                          {enrolled.map((m) => (
+                            <div
+                              key={m.id}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: ".6rem",
+                                fontSize: ".82rem",
+                                background: "rgba(255,255,255,0.02)",
+                                padding: ".35rem .6rem",
+                                borderRadius: "4px",
+                                border: "1px solid rgba(255,255,255,0.04)",
+                              }}
+                            >
+                              <span
+                                className="avatar light"
+                                style={{
+                                  width: "22px",
+                                  height: "22px",
+                                  fontSize: ".68rem",
+                                  minWidth: "22px",
+                                }}
+                              >
                                 {m.name.slice(0, 2).toUpperCase()}
                               </span>
                               <strong>{m.name}</strong>
-                              <span className="mono" style={{opacity:.7,fontSize:".78rem"}}>{m.login_id}</span>
-                              <span style={{marginLeft:"auto",opacity:.55,fontSize:".75rem"}}>Joined {fmtDate(m.joined_at)}</span>
+                              <span
+                                className="mono"
+                                style={{ opacity: 0.7, fontSize: ".78rem" }}
+                              >
+                                {m.login_id}
+                              </span>
+                              <span
+                                style={{
+                                  marginLeft: "auto",
+                                  opacity: 0.55,
+                                  fontSize: ".75rem",
+                                }}
+                              >
+                                Joined {fmtDate(m.joined_at)}
+                              </span>
                             </div>
                           ))}
                         </div>
@@ -3200,41 +3791,78 @@ function Team({ project, online, notify, refresh }) {
 
       {/* Project members */}
       <section className="panel">
-        <PanelHeading title="Project members" description={`${members.length} people with individual access to this study.`} />
+        <PanelHeading
+          title="Project members"
+          description={`${members.length} people with individual access to this study.`}
+        />
         {members.length ? (
           <div className="member-list">
             {members.map((member) => (
               <div className="member-row" key={member.id}>
-                <span className={`avatar ${member.role === "admin" ? "" : "light"}`}>
+                <span
+                  className={`avatar ${member.role === "admin" ? "" : "light"}`}
+                >
                   {member.name.slice(0, 2).toUpperCase()}
                 </span>
                 <div>
                   <strong>{member.name}</strong>
                   <span className="mono">{member.login_id}</span>
                 </div>
-                <span className={`badge ${member.role === "admin" ? "green" : "neutral"}`}>
+                <span
+                  className={`badge ${member.role === "admin" ? "green" : "neutral"}`}
+                >
                   {member.role === "admin" ? "Administrator" : "Field surveyor"}
                 </span>
-                <span className="member-access">{member.role === "admin" ? "Manage & export" : "Collect project responses"}</span>
+                <span className="member-access">
+                  {member.role === "admin"
+                    ? "Manage & export"
+                    : "Collect project responses"}
+                </span>
               </div>
             ))}
           </div>
         ) : (
-          <Empty icon={Users}
-            title={online ? "Bring your field team together" : "Connect to view your team"}
+          <Empty
+            icon={Users}
+            title={
+              online
+                ? "Bring your field team together"
+                : "Connect to view your team"
+            }
             description="Create a unique login ID for each collector and share their one-time activation code securely."
           />
         )}
       </section>
       <div className="two-info-cards">
-        <div className="panel"><ShieldCheck size={23} /><h3>Access follows the project.</h3><p>Collectors can submit to their assigned project and view their own responses. Other collectors' answers and bulk exports stay restricted.</p></div>
-        <div className="panel"><CircleHelp size={23} /><h3>Keep fieldwork personal.</h3><p>Use a team prefix when assigning roll numbers that may overlap between institutions. Avoid shared passwords or shared collector accounts.</p></div>
+        <div className="panel">
+          <ShieldCheck size={23} />
+          <h3>Access follows the project.</h3>
+          <p>
+            Collectors can submit to their assigned project and view their own
+            responses. Other collectors' answers and bulk exports stay
+            restricted.
+          </p>
+        </div>
+        <div className="panel">
+          <CircleHelp size={23} />
+          <h3>Keep fieldwork personal.</h3>
+          <p>
+            Use a team prefix when assigning roll numbers that may overlap
+            between institutions. Avoid shared passwords or shared collector
+            accounts.
+          </p>
+        </div>
       </div>
-      {inviteOpen && <InviteModal busy={busy} onClose={() => setInviteOpen(false)} onSave={invite} />}
+      {inviteOpen && (
+        <InviteModal
+          busy={busy}
+          onClose={() => setInviteOpen(false)}
+          onSave={invite}
+        />
+      )}
     </>
   );
 }
-
 
 function Modal({ title, onClose, children, wide = false }) {
   const modalRef = useRef(null);

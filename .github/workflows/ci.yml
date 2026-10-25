@@ -37,6 +37,7 @@ jobs:
         run: |
           cargo build --locked
           python3 scripts/smoke.py
+          node --test api/proxy.test.cjs
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -45,3 +46,4 @@ jobs:
           python3 -m pip install -r scripts/requirements-browser.txt
           python3 -m playwright install --with-deps chromium
           python3 scripts/browser_smoke.py
+          python3 scripts/access_smoke.py

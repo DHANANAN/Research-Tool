@@ -5,8 +5,37 @@ import { randomUUID } from "node:crypto";
 
 export default defineConfig({
   css: { postcss: {} },
+  optimizeDeps: { exclude: ["write-excel-file"] },
   server: { proxy: { "/api": "http://127.0.0.1:3000" } },
   plugins: [
+    {
+      name: "literal-spreadsheet-strings",
+      transform(code, id) {
+        if (
+          !id
+            .replaceAll("\\", "/")
+            .endsWith(
+              "/write-excel-file/modules/xlsx/initializeSharedStrings.js",
+            )
+        )
+          return null;
+        // v4.1.1 indexes shared strings with a plain object. User text such as
+        // "constructor" or "__proto__" must not resolve an inherited property.
+        // Keep the verified dependency intact and fix its dictionary at compile time.
+        const original = "var sharedStringIdByString = {};";
+        if (!code.includes(original))
+          throw new Error(
+            "Review the spreadsheet string-dictionary compatibility patch after updating write-excel-file.",
+          );
+        return {
+          code: code.replace(
+            original,
+            "var sharedStringIdByString = Object.create(null);",
+          ),
+          map: null,
+        };
+      },
+    },
     {
       name: "version-offline-shell",
       apply: "build",
