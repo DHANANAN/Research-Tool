@@ -16,3 +16,6 @@
 *.db-wal
 __pycache__/
 .DS_Store
+
+/tests/firebase/node_modules/
+*debug.log

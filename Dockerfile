@@ -8,7 +8,7 @@ RUN --mount=type=secret,id=build_ca \
 COPY vite.config.mjs ./
 COPY web ./web
 COPY assets ./assets
-RUN npm run build && chmod -R a+rX dist
+RUN VITE_BACKEND=rust npm run build && chmod -R a+rX dist
 
 FROM rust:1.90.0-bookworm AS rust
 WORKDIR /build

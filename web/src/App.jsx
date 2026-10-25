@@ -1,3 +1,4 @@
+import { firebaseEnabled } from "./firebase.js";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowDown,
@@ -1037,7 +1038,7 @@ function Auth({ onSuccess, online, message }) {
           )}
         </section>
         <div className="auth-tabs" aria-label="Account access">
-          {tabs.map(([key, label]) => (
+          {tabs.filter(([key]) => !(firebaseEnabled && !playground && key === "activate")).map(([key, label]) => (
             <button
               type="button"
               key={key}
@@ -1068,6 +1069,11 @@ function Auth({ onSuccess, online, message }) {
                   ? "Enter the invitation code shared by your administrator."
                   : "Use the one-time code supplied by your study administrator."}
           </p>
+          {firebaseEnabled && !playground && <Notice>Cloud accounts use an email address as the login ID. Surveyors: choose Join organization and enter your invitation code. Invitations last seven days.</Notice>}
+          {firebaseEnabled && !playground && tab === "login" && <button type="button" className="text-button" onClick={async () => {
+            try { await api("/api/auth/reset", {method:"POST",body:{login_id:values.login_id}}); setError("Password reset requested. Check your email inbox."); }
+            catch(e) { setError(e.message); }
+          }}>Reset password by email</button>}
           {(error || message?.error) && (
             <div role="alert">
               <Notice tone="danger">{error || message.text}</Notice>
@@ -3488,13 +3494,13 @@ function Team({ project, online, notify, refresh }) {
         title="Research team"
         description="Give every surveyor their own identity and access to this study's published questionnaires."
       >
-        <Button
+        {(!firebaseEnabled || isDemoMode()) && <Button
           icon={Plus}
           disabled={!project || !online}
           onClick={() => setInviteOpen(true)}
         >
           Add field surveyor
-        </Button>
+        </Button>}
       </PageHeading>
       <div className="team-callout">
         <span className="small-icon">
@@ -3510,6 +3516,7 @@ function Team({ project, online, notify, refresh }) {
         <ShieldCheck size={27} />
       </div>
 
+      {firebaseEnabled && !isDemoMode() && <Notice>Cloud mode: use the organization invitation panel to invite surveyors. Members can collect for all published studies in this organization. Custom invitation codes are replaced with secure generated codes.</Notice>}
       {/* Project-level activation code result */}
       {invitation && (
         <section className="panel invitation-result">
@@ -3630,7 +3637,8 @@ function Team({ project, online, notify, refresh }) {
             <label style={{ flex: 1, minWidth: "160px", marginBottom: 0 }}>
               Custom code (optional)
               <input
-                value={orgInviteCode}
+                disabled={firebaseEnabled && !isDemoMode()}
+                  value={orgInviteCode}
                 onChange={(e) => setOrgInviteCode(e.target.value)}
                 placeholder="Leave blank to auto-generate"
               />

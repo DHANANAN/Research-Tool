@@ -13,3 +13,5 @@ playwright-report
 *.sqlite3-shm
 *.sqlite3-wal
 **/__pycache__
+
+tests/firebase/node_modules

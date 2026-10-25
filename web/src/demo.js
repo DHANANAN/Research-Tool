@@ -37,7 +37,7 @@ const hash = async (value) =>
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 
-function seedStudy(state, owner, publishedPractice = false) {
+export function seedStudy(state, owner, publishedPractice = false) {
   const project = {
     id: id(),
     name: "Smart Cities, Silent Citizens",
@@ -244,7 +244,7 @@ function projectAccess(state, user, projectId, admin = false) {
     throw fail("Administrator access is required.", 403);
   return project;
 }
-function checkSchema(questions) {
+export function checkSchema(questions) {
   if (!questions.length || questions.length > 200)
     throw fail("A questionnaire needs between 1 and 200 questions.");
   const seen = new Set();
@@ -288,7 +288,7 @@ function checkSchema(questions) {
     seen.add(q.id);
   }
 }
-function validatedAnswers(form, input) {
+export function validatedAnswers(form, input) {
   const answers = {},
     statuses = {};
   if (
@@ -744,6 +744,10 @@ export async function demoWorkbook(projectId, formId) {
       ),
     };
   });
+  return workbookFromSnapshot(snapshot);
+}
+
+export async function workbookFromSnapshot(snapshot) {
   const { default: writeExcelFile } = await import("write-excel-file/browser");
   // Explicit scalar types keep =, +, -, @ answer text inert in spreadsheets.
   const cell = (value) =>
@@ -843,7 +847,7 @@ export async function demoWorkbook(projectId, formId) {
   sheets.push(
     sheet("ExportInfo", [
       ["Property", "Value"],
-      ["mode", "LOCAL PLAYGROUND — fictional data only"],
+      ["mode", snapshot.mode || "LOCAL PLAYGROUND — fictional data only"],
       ["project", snapshot.project.name],
       ["response_count", snapshot.responses.length],
       ["created_at_utc", now()],
@@ -861,13 +865,18 @@ export async function demoCsv(projectId, formId) {
     const user = authenticate(state);
     projectAccess(state, user, projectId, true);
     const forms = state.forms.filter(f => f.project_id === projectId && (!formId || f.id === formId));
+    return csvFromSnapshot({forms, responses: state.responses.filter(r => r.project_id === projectId)});
+  });
+}
+
+export function csvFromSnapshot({forms, responses}) {
     const field = (value, index) => {
       let text = String(value);
       if (!(index === 11 && /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(text)) && /^[\s]*[=+@-]|^[\t\r\n]/.test(text)) text = "'" + text;
       return '"' + text.replaceAll('"', '""') + '"';
     };
     const rows = ["response_id,project_id,form_id,form_version,collector_id,collected_at_utc,received_at_utc,question_id,question_label,question_type,status,answer_json"];
-    for (const r of state.responses.filter(r => r.project_id === projectId)) {
+    for (const r of responses) {
       const f = forms.find(f => f.id === r.form_id);
       if (!f) continue;
       for (const q of f.questions.filter(q => q.kind !== "section")) {
@@ -876,5 +885,4 @@ export async function demoCsv(projectId, formId) {
       }
     }
     return rows.join("\r\n") + "\r\n";
-  });
 }

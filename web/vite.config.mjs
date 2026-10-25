@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 
 export default defineConfig({
+  envDir: fileURLToPath(new URL("../", import.meta.url)),
   build: { outDir: "../dist", emptyOutDir: true },
   css: { postcss: {} },
   optimizeDeps: { exclude: ["write-excel-file"] },

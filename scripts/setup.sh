@@ -11,6 +11,6 @@ research_require_command pdftotext
 node -e 'if (Number(process.versions.node.split(".")[0]) < 22) { console.error("Use Node.js 22 LTS or newer; deployments are pinned to Node.js 22."); process.exit(1); }'
 
 npm ci --include=dev
-npm run build
+VITE_BACKEND=rust npm run build
 cargo build --locked
 printf 'Setup complete. Run ./scripts/start.sh from this checkout.\n'

@@ -8,6 +8,8 @@ See [operations](docs/operations.md) for HTTPS hosting, consistent backups, oper
 
 ## Run it
 
+**Firebase cloud pilot (no Docker):** follow [the step-by-step Firebase and Vercel guide](docs/firebase-setup.md). It connects email accounts, shared Firestore data, and browser Excel/CSV exports. Console configuration and live verification are required.
+
 **Use your own PC as the server:** install Docker Desktop and follow [the local computer guide](docs/local-computer.md). It runs the website, Rust backend and persistent database together, without Vercel.
 
 **Portal access and test accounts:** see [Getting into the portal](docs/access.md). The sign-in page includes **Explore demo** with four public playground profiles, local organization/account creation, and all 15 editable SC/SC example guides. For Vercel hosting, use the repository-root configuration and [Rust server deployment instructions](docs/deployment.md); online account APIs require a persistent backend.

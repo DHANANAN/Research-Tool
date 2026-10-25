@@ -1,3 +1,4 @@
+import { firebaseEnabled, firebaseRequest, firebaseExport } from "./firebase.js";
 import { isDemoMode, demoRequest, demoWorkbook, demoCsv } from "./demo.js";
 
 export class ApiError extends Error {
@@ -8,6 +9,7 @@ export class ApiError extends Error {
 }
 export async function api(path, options = {}) {
   if (isDemoMode()) return demoRequest(path, options);
+  if (firebaseEnabled) return firebaseRequest(path, options);
   const headers = new Headers(options.headers || {});
   const method = options.method || "GET";
   if (!["GET", "HEAD"].includes(method)) headers.set("X-Research-Client", "1");
@@ -59,6 +61,7 @@ export async function downloadWorkbook(projectId, formId) {
     saveWorkbook(blob);
     return;
   }
+  if (firebaseEnabled) { saveWorkbook(await firebaseExport(projectId, formId)); return; }
   let response;
   try {
     response = await fetch(
@@ -94,6 +97,7 @@ function saveWorkbook(blob, filename = "research-responses.xlsx") {
 export async function downloadCsv(projectId, formId) {
   let blob;
   if (isDemoMode()) blob = new Blob([await demoCsv(projectId, formId)], { type: "text/csv;charset=utf-8" });
+  else if (firebaseEnabled) blob = await firebaseExport(projectId, formId, true);
   else {
     const response = await fetch(`/api/projects/${projectId}/export.csv${formId ? `?form_id=${encodeURIComponent(formId)}` : ""}`, { credentials: "same-origin", cache: "no-store" });
     if (!response.ok) throw new ApiError((await response.json().catch(() => null))?.error || "CSV export failed.");
