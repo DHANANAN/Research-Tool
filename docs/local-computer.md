@@ -79,3 +79,9 @@ If downloads succeed but `proc-macro2` fails with `could not execute process ...
 The updated Dockerfile uses a dedicated, locked, architecture-specific Cargo build cache and copies the finished executable into the runtime image. It also uses the compiler already installed in the pinned Rust image, without downloading editor-only tooling. These are build-isolation changes, not a confirmed repair of the affected Windows host.
 
 Download the latest repository ZIP into a new folder, extract it, and double-click `Start-Research-Tool.cmd`. Keep Docker Desktop running. The existing named research-data volume is preserved. If the error persists, retain the new build log; do not reset Docker storage or delete research volumes.
+
+### Collect a compiler diagnostic report
+
+If the updated build still cannot execute `proc-macro2`'s build script, double-click **Diagnose-Research-Tool.cmd** in the latest extracted repository. Keep Docker Desktop running. The report opens in Notepad; share its contents for diagnosis. This checks a tiny compiled executable, captures the application build result, and inspects the failing file and its Linux loader. It does not open, delete or mount research data. It may download the Rust builder and dependencies and uses disposable Docker build storage. The launcher stops waiting after ten minutes; a running application compilation inside the diagnostic has an eight-minute limit.
+
+The Docker diagnostic itself can finish successfully while reporting an application build failure: use the report's **Application build exit code**, not Docker's overall success indicator. A report with `RUST_EXECUTION_OK` proves that one small compiled program ran; it does not by itself prove the research application works. This diagnostic is intended to identify the cause, not to claim a repair.

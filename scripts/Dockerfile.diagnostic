@@ -1,0 +1,12 @@
+FROM rust:1.90.0-bookworm
+WORKDIR /build
+ENV CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR=/cargo-target
+ARG TARGETARCH
+COPY Cargo.toml Cargo.lock ./
+COPY src ./src
+COPY assets ./assets
+COPY scripts/docker-diagnostic.sh /diagnostic.sh
+RUN sed -i 's/\r$//' /diagnostic.sh
+RUN --mount=type=secret,id=build_ca \
+    --mount=type=cache,id=research-tool-rust-1.90-${TARGETARCH}-v1,target=/cargo-target,sharing=locked \
+    sh /diagnostic.sh
