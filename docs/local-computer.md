@@ -71,3 +71,11 @@ An error such as `Docker Desktop is unable to start` from `docker info` means th
 Do not use Docker's factory reset or delete its storage as a first troubleshooting step: existing Docker volumes may contain retained data. The launcher does not change Windows features, firmware settings, or Docker storage automatically.
 
 The Windows launcher has been reviewed for PowerShell 5.1 native-command error handling but cannot be executed in this Linux development environment. Host-level Docker repairs must be verified on the affected PC.
+
+## Rust build reports a missing `build-script-build`
+
+If downloads succeed but `proc-macro2` fails with `could not execute process ... build-script-build` and `No such file or directory`, the build has failed before the application source is compiled. That message alone cannot distinguish a missing executable from a missing loader or a Docker storage problem.
+
+The updated Dockerfile uses a dedicated, locked, architecture-specific Cargo build cache and copies the finished executable into the runtime image. It also uses the compiler already installed in the pinned Rust image, without downloading editor-only tooling. These are build-isolation changes, not a confirmed repair of the affected Windows host.
+
+Download the latest repository ZIP into a new folder, extract it, and double-click `Start-Research-Tool.cmd`. Keep Docker Desktop running. The existing named research-data volume is preserved. If the error persists, retain the new build log; do not reset Docker storage or delete research volumes.
