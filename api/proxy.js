@@ -11,11 +11,13 @@ function jsonError(response, status, code, error) {
 
 function backendOrigin(value) {
   if (!value) return null;
-  const url = new URL(value);
+  const trimmed = String(value).trim();
+  if (!trimmed) return null;
+  const url = new URL(trimmed);
   const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
   if (
     (url.protocol !== "https:" && !(url.protocol === "http:" && loopback)) ||
-    url.username || url.password || url.search || url.hash || url.pathname !== "/"
+    url.username || url.password || url.search || url.hash || (url.pathname !== "/" && url.pathname !== "")
   ) throw new Error("Invalid backend origin");
   return url.origin;
 }

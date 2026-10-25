@@ -5,6 +5,7 @@ RUN --mount=type=secret,id=build_ca \
     if [ -f /run/secrets/build_ca ]; then \
       NODE_EXTRA_CA_CERTS=/run/secrets/build_ca npm ci --include=dev; \
     else npm ci --include=dev; fi
+COPY vite.config.mjs ./
 COPY web ./web
 COPY assets ./assets
 RUN npm run build && chmod -R a+rX dist
