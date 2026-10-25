@@ -46,7 +46,7 @@ import {
   WifiOff,
   X,
 } from "lucide-react";
-import { api, downloadWorkbook } from "./api.js";
+import { api, downloadWorkbook, downloadCsv } from "./api.js";
 import * as storage from "./storage.js";
 import {
   enterDemo,
@@ -434,11 +434,11 @@ export default function App() {
       notify(error.message, true);
     }
   };
-  const doExport = async (formId) => {
+  const doExport = async (formId, csv = false) => {
     try {
-      await downloadWorkbook(projectId, formId);
+      await (csv ? downloadCsv : downloadWorkbook)(projectId, formId);
       notify(
-        "Your Excel workbook is ready. Keep downloaded research data private.",
+        "Your export is ready. Keep downloaded research data private.",
       );
     } catch (error) {
       notify(error.message, true);
@@ -3210,6 +3210,15 @@ function Responses({ project, user, forms, online, onExport, notify }) {
         </Button>
         {admin && (
           <Button
+            variant="secondary"
+            disabled={!online || !project}
+            onClick={() => onExport(formFilter, true)}
+          >
+            Export CSV
+          </Button>
+        )}
+        {admin && (
+          <Button
             icon={Download}
             disabled={!online || !project}
             onClick={() => onExport(formFilter)}
@@ -3238,7 +3247,7 @@ function Responses({ project, user, forms, online, onExport, notify }) {
           <p>
             One row per response.
             <br />
-            <span>Stable answers, codebook, and export metadata.</span>
+            <span>Excel: typed answers and codebook. CSV: one question per row, with JSON answer values.</span>
           </p>
         </div>
       </div>

@@ -4,6 +4,8 @@
 Uses only Python's standard library and the built Rust binary. It creates a
 temporary database, random credentials, and a loopback server, then removes them.
 """
+import csv
+import io
 import copy
 import http.cookiejar
 import io
@@ -154,7 +156,7 @@ def main():
             project = admin.request('/api/projects', {'name': 'Universal fictional study', 'description': 'Not ICSSR-specific', 'cities': []})
             pid = project['id']
             questions = [question('q_consent', 'boolean', True), question('q_count', 'integer', True, min=0, max=100),
-                         question('q_boolean', 'boolean', True), question('q_identifier', 'text'),
+                         question('q_boolean', 'boolean', True), question('q_negative', 'decimal'), question('q_identifier', 'text'),
                          question('q_formula', 'long_text'), question('q_unicode', 'text'),
                          question('q_multiple', 'multiple', True, [{'code': 'a', 'label': 'A'}, {'code': 'b', 'label': 'B'}]),
                          question('q_hidden', 'text', True, show_if={'question_id': 'q_boolean', 'equals': True}),
@@ -179,7 +181,7 @@ def main():
             collector.request(f'/api/projects/{seeded["projects"][0]["id"]}/responses', expected=404)
             answers = {'q_consent': True, 'q_count': 0, 'q_boolean': False, 'q_identifier': '0007',
                        'q_formula': '=HYPERLINK("https://example.invalid","fictional")',
-                       'q_unicode': 'नमस्ते — fictional', 'q_multiple': ['a']}
+                       'q_unicode': 'नमस्ते — fictional', 'q_negative': -1.25, 'q_multiple': ['a']}
             payload = {'id': str(uuid.uuid4()), 'form_id': fid, 'expected_user_id': collector_user['id'], 'collected_at': '2026-10-25T05:30:00+05:30', 'timezone': 'Asia/Kolkata', 'answers': answers}
             wrong_actor = copy.deepcopy(payload)
             wrong_actor['expected_user_id'] = seeded['user']['id']
@@ -204,6 +206,18 @@ def main():
             assert rows[0]['collected_at'].endswith('+00:00') or rows[0]['collected_at'].endswith('Z')
             workbook = admin.request(f'/api/projects/{pid}/export.xlsx?form_id={fid}', raw=True)
             inspect_workbook(workbook)
+            collector.request(f'/api/projects/{pid}/export.csv', expected=403)
+            csv_bytes = admin.request(f'/api/projects/{pid}/export.csv?form_id={fid}', raw=True)
+            csv_rows = list(csv.DictReader(io.StringIO(csv_bytes.decode('utf-8'))))
+            decoded = {row['question_id']: json.loads(row['answer_json']) for row in csv_rows}
+            assert decoded['q_negative'] == -1.25
+            assert decoded['q_count'] == 0 and decoded['q_boolean'] is False
+            assert decoded['q_identifier'] == '0007' and decoded['q_multiple'] == ['a']
+            assert decoded['q_formula'] == answers['q_formula']
+            assert decoded['q_unicode'] == answers['q_unicode']
+            assert decoded['q_hidden'] is None and decoded['q_optional'] is None
+            assert all(row['form_id'] == fid for row in csv_rows)
+            assert admin.request('/api/ready')['ok'] is True
             imported = admin.request(f'/api/projects/{pid}/import', {'text': 'A fictional instrument\n1. What matters to you?\na) Access\nb) Cost'})
             assert len(imported['questions']) == 1 and imported['questions'][0]['required'] is False
             imported_pdf = admin.request(f'/api/projects/{pid}/import-pdf', pdf_with_text('1. What matters to you?'))
@@ -220,7 +234,7 @@ def main():
             process = start()
             admin.request('/api/auth/login', {'login_id': 'smoke-admin', 'password': password})
             assert len(admin.request(f'/api/projects/{pid}/responses')) == 1
-            print('PASS: HTTP auth/activation, project isolation, immutable forms, consent/typed validation, idempotency, XLSX cell types, text/PDF draft import, closure, and database restart persistence.')
+            print('PASS: HTTP auth/activation, project isolation, immutable forms, consent/typed validation, idempotency, XLSX/CSV types, text/PDF draft import, closure, and database restart persistence.')
         finally:
             if process.poll() is None:
                 process.terminate()

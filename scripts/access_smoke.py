@@ -17,6 +17,7 @@ from smoke import ROOT
 
 def main():
     from playwright.sync_api import sync_playwright, expect
+    import csv, json
     with tempfile.TemporaryDirectory(prefix='research-access-') as temp:
         with socket.socket() as sock:
             sock.bind(('127.0.0.1', 0))
@@ -126,6 +127,13 @@ def main():
                                 assert not sheet.findall('.//m:f', ns)
                                 rows.extend(sheet.findall('m:sheetData/m:row', ns))
                         assert rows
+                    with page.expect_download() as downloading:
+                        page.get_by_role('button', name='Export CSV', exact=True).click()
+                    csv_path = Path(temp) / 'playground.csv'
+                    downloading.value.save_as(csv_path)
+                    with csv_path.open(newline='', encoding='utf-8') as stream:
+                        values = [json.loads(row['answer_json']) for row in csv.DictReader(stream)]
+                    assert '=2+2' in values and 'constructor' in values
                     page.set_viewport_size({'width': 390, 'height': 844})
                     assert page.evaluate('document.documentElement.scrollWidth <= innerWidth')
                     page.set_viewport_size({'width': 1400, 'height': 1000})

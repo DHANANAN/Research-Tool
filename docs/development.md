@@ -27,7 +27,7 @@ Setup performs frozen-lockfile installation with `npm ci`, builds `dist`, and bu
 
 On a new database, start creates an administrator with login ID `admin`. Its random initial password is saved privately in ignored `.local/admin-password`; read that file locally to sign in. The script prints the file path, never the password. Do not commit, paste into an issue, or share that file. If you supply `RESEARCH_ADMIN_PASSWORD` yourself, that value is used only for initial administrator creation and is not written to the local password file.
 
-Restarting preserves the database and existing accounts. Changing a bootstrap environment variable does **not** change an existing account's password. Keep the original password securely; a reset/recovery interface is outside this first pilot. The initial administrator can provision surveyor IDs and one-time activation codes in the Team screen; each surveyor activates their account and sets their own password.
+Restarting preserves the database and existing accounts. Changing a bootstrap environment variable does **not** change an existing account's password. Use the operator-assisted [account recovery procedure](operations.md#account-recovery) if access is lost. The initial administrator can provision surveyor IDs and one-time activation codes in the Team screen; each surveyor activates their account and sets their own password.
 
 The initial “Smart Cities, Silent Citizens” project contains an **unapproved draft**. Delhi, Aizawl, Chennai, and Srinagar are the four supplied cities; the fifth city remains unconfirmed. Review and replace candidate questions and consent wording before any real field collection. No participant responses or surveyor accounts are seeded.
 
@@ -56,7 +56,7 @@ For a build without the dev server, rerun `./scripts/setup.sh` after changing so
 | `dist` | Generated static browser application served by the Rust server |
 | `target` | Rust build output; `target/debug/research-tool` is the development executable |
 
-Keep the SQLite database, its active journal files, and the initial password file private. A database file copied while writes are in progress may be inconsistent; document and test a supported SQLite backup procedure before using the pilot for participant data. Browser drafts and queues are device-local and do not constitute a backup. They can be cleared by the browser or operating system.
+Keep the SQLite database, its active journal files, and the initial password file private. Use the verified SQLite [backup and restore tool](operations.md#consistent-backup-and-restore) for consistent snapshots. Browser drafts and queues are device-local and do not constitute a backup. They can be cleared by the browser or operating system.
 
 ## Verification
 
@@ -91,6 +91,6 @@ PDF extraction needs its own representative text-PDF checks; a process starting 
 
 ## First-pilot boundaries
 
-Per-questionnaire assignments, institutional administration, account recovery, response correction interfaces, advanced export filters, scanned-PDF OCR, repeating groups, and production operations remain separate roadmap work. The MIT license covers source code. Participant data remains private; deployment owners set study approvals, access, retention, and hosting policies.
+Per-questionnaire assignments, institutional administration, self-service email recovery, response correction interfaces, advanced export filters, scanned-PDF OCR, repeating groups, and production operations remain separate roadmap work. The MIT license covers source code. Participant data remains private; deployment owners set study approvals, access, retention, and hosting policies.
 
 Phone installation and service workers require HTTPS outside localhost, and browser support varies. A phone cannot reach another machine's `127.0.0.1`; remote field testing requires an explicitly configured reachable deployment with HTTPS. Do not expose a development server publicly as a substitute for that deployment.

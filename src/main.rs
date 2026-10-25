@@ -3,6 +3,21 @@ use research_tool::{api, db};
 async fn main() {
     let path =
         std::env::var("RESEARCH_DB_PATH").unwrap_or_else(|_| ".local/research.sqlite3".into());
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if !args.is_empty() {
+        if args.len() != 2 || args[0] != "--recover-account" {
+            eprintln!("Usage: research-tool [--recover-account LOGIN_ID]");
+            std::process::exit(2);
+        }
+        match research_tool::recovery::recover(&path, &args[1]) {
+            Ok(code) => println!("Private one-time activation code (expires in 1 hour): {code}"),
+            Err(error) => {
+                eprintln!("Recovery failed: {error}");
+                std::process::exit(1);
+            }
+        }
+        return;
+    }
     let login = std::env::var("RESEARCH_ADMIN_ID").ok();
     let password = std::env::var("RESEARCH_ADMIN_PASSWORD").ok();
     let name =

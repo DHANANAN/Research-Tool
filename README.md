@@ -4,7 +4,11 @@ An open-source research data collection platform: create questionnaires, give fi
 
 **Status: development pilot.** The repository now contains a Rust server, a responsive web application, account activation, a questionnaire editor, versioned publication, field collection with an offline outbox, reviewed question-candidate import, and real Excel exports. The broader requirements below remain the product direction; see the [development guide](docs/development.md) for the implemented scope and current limits. Use fictional data while evaluating the pilot.
 
+See [operations](docs/operations.md) for HTTPS hosting, consistent backups, operator account recovery, and CSV export semantics.
+
 ## Run it
+
+**Use your own PC as the server:** install Docker Desktop and follow [the local computer guide](docs/local-computer.md). It runs the website, Rust backend and persistent database together, without Vercel.
 
 **Portal access and test accounts:** see [Getting into the portal](docs/access.md). The sign-in page includes **Explore demo** with four public playground profiles, local organization/account creation, and all 15 editable SC/SC example guides. For Vercel hosting, use the repository-root configuration and [Rust server deployment instructions](docs/deployment.md); online account APIs require a persistent backend.
 
@@ -83,4 +87,4 @@ The pilot uses a **Rust/Axum API**, **SQLite**, and a **React/Vite PWA** with In
 
 The engine is universal: study names, locations, questions, choices, and rules are editable. “Smart Cities, Silent Citizens” is an **unapproved example workspace**, not a restriction on other research. The uploaded 60-page instrument is marked for review/pilot testing; conflicting city lists, eligibility, and scoring need researcher confirmation. Neither the sample nor imported candidates are presented as approved ICSSR instruments.
 
-Current limits include project-wide collector assignments, no administrative password recovery/revocation interface, no response-correction UI, no advanced export filters, no OCR or repeating groups, and no tested production backup/hosting operations. The pilot exports separate worksheets per immutable form version to prevent unrelated question codes from being mixed. There is no external AI dependency, billing, advertising, or telemetry in this implementation. Self-hosting still needs infrastructure and administration. See the [roadmap](docs/roadmap.md) before planning real field deployment.
+Current limits include project-wide collector assignments, no self-service email password recovery, no response-correction UI, no advanced export filters, no OCR or repeating groups, and public hosting not yet verified. The pilot exports separate worksheets per immutable form version to prevent unrelated question codes from being mixed. There is no external AI dependency, billing, advertising, or telemetry in this implementation. Self-hosting still needs infrastructure and administration. See the [roadmap](docs/roadmap.md) before planning real field deployment.

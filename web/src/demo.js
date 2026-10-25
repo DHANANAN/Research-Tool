@@ -855,3 +855,26 @@ export async function demoWorkbook(projectId, formId) {
   );
   return writeExcelFile(sheets).toBlob();
 }
+
+export async function demoCsv(projectId, formId) {
+  return transaction((state) => {
+    const user = authenticate(state);
+    projectAccess(state, user, projectId, true);
+    const forms = state.forms.filter(f => f.project_id === projectId && (!formId || f.id === formId));
+    const field = (value, index) => {
+      let text = String(value);
+      if (!(index === 11 && /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(text)) && /^[\s]*[=+@-]|^[\t\r\n]/.test(text)) text = "'" + text;
+      return '"' + text.replaceAll('"', '""') + '"';
+    };
+    const rows = ["response_id,project_id,form_id,form_version,collector_id,collected_at_utc,received_at_utc,question_id,question_label,question_type,status,answer_json"];
+    for (const r of state.responses.filter(r => r.project_id === projectId)) {
+      const f = forms.find(f => f.id === r.form_id);
+      if (!f) continue;
+      for (const q of f.questions.filter(q => q.kind !== "section")) {
+        const status = r.statuses[q.id] || "not_recorded";
+        rows.push([r.id, r.project_id, r.form_id, r.form_version, r.collector_id, r.collected_at, r.received_at, q.id, q.label, q.kind, status, JSON.stringify(status === "answered" ? r.answers[q.id] ?? null : null)].map(field).join(","));
+      }
+    }
+    return rows.join("\r\n") + "\r\n";
+  });
+}

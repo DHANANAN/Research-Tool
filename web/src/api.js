@@ -1,4 +1,4 @@
-import { isDemoMode, demoRequest, demoWorkbook } from "./demo.js";
+import { isDemoMode, demoRequest, demoWorkbook, demoCsv } from "./demo.js";
 
 export class ApiError extends Error {
   constructor(message, status = 0) {
@@ -80,13 +80,25 @@ export async function downloadWorkbook(projectId, formId) {
     throw new ApiError("The server did not return an Excel workbook.");
   saveWorkbook(blob);
 }
-function saveWorkbook(blob) {
+function saveWorkbook(blob, filename = "research-responses.xlsx") {
   const link = document.createElement("a");
   const url = URL.createObjectURL(blob);
   link.href = url;
-  link.download = "research-responses.xlsx";
+  link.download = filename;
   document.body.append(link);
   link.click();
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+export async function downloadCsv(projectId, formId) {
+  let blob;
+  if (isDemoMode()) blob = new Blob([await demoCsv(projectId, formId)], { type: "text/csv;charset=utf-8" });
+  else {
+    const response = await fetch(`/api/projects/${projectId}/export.csv${formId ? `?form_id=${encodeURIComponent(formId)}` : ""}`, { credentials: "same-origin", cache: "no-store" });
+    if (!response.ok) throw new ApiError((await response.json().catch(() => null))?.error || "CSV export failed.");
+    if (!(response.headers.get("content-type") || "").includes("text/csv")) throw new ApiError("The server did not return CSV.");
+    blob = await response.blob();
+  }
+  saveWorkbook(blob, "research-answers.csv");
 }

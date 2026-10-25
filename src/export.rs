@@ -282,6 +282,65 @@ fn build(
     workbook.save_to_buffer()
 }
 
+/// Long-format CSV: JSON scalars/arrays preserve answer types and identifier zeros.
+/// Each row identifies its immutable form, response and question explicitly.
+pub fn build_csv(forms: &[Form], responses: &[Submission]) -> String {
+    fn field(value: &str, numeric: bool) -> String {
+        let dangerous = !numeric
+            && (value.trim_start().starts_with(['=', '+', '-', '@'])
+                || value.starts_with(['\t', '\r', '\n']));
+        format!(
+            "\"{}{}\"",
+            if dangerous { "'" } else { "" },
+            value.replace('"', "\"\"")
+        )
+    }
+    let mut out = String::from(
+        "response_id,project_id,form_id,form_version,collector_id,collected_at_utc,received_at_utc,question_id,question_label,question_type,status,answer_json\r\n",
+    );
+    for response in responses {
+        let Some(form) = forms.iter().find(|f| f.id == response.form_id) else {
+            continue;
+        };
+        for q in form.questions.iter().filter(|q| q.kind != "section") {
+            let status = response
+                .statuses
+                .get(&q.id)
+                .map(String::as_str)
+                .unwrap_or("not_recorded");
+            let answer = if status == "answered" {
+                response.answers.get(&q.id).unwrap_or(&Value::Null)
+            } else {
+                &Value::Null
+            };
+            let values = [
+                &response.id,
+                &response.project_id,
+                &response.form_id,
+                &response.form_version.to_string(),
+                &response.collector_id,
+                &response.collected_at,
+                &response.received_at,
+                &q.id,
+                &q.label,
+                &q.kind,
+                status,
+                &answer.to_string(),
+            ];
+            out.push_str(
+                &values
+                    .iter()
+                    .enumerate()
+                    .map(|(i, v)| field(v, i == 11 && answer.is_number()))
+                    .collect::<Vec<_>>()
+                    .join(","),
+            );
+            out.push_str("\r\n");
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -4,9 +4,11 @@ The Vercel website builds the browser application. The Rust server and its SQLit
 
 This repository now includes a same-origin API proxy and SPA routing in `vercel.json`. An unconnected server returns an explanatory JSON `503 backend_unavailable` instead of an HTML 404. Guest playground access is separate from real online organization accounts and must be labeled accordingly.
 
+For an existing server, [operations.md](operations.md) provides a Compose configuration with automatic HTTPS, backups and recovery.
+
 ## Deploy the Rust application
 
-Use `Dockerfile` on a container host with a persistent writable volume mounted at `/data`. It builds the Rust API and browser application together and installs Poppler for PDF import. The service listens on port 3000, with health check `/api/health`. Publish it through the host's HTTPS endpoint.
+Use `Dockerfile` on a container host with a persistent writable volume mounted at `/data`. It builds the Rust API and browser application together and installs Poppler for PDF import. The service listens on port 3000, with database readiness check `/api/ready` and process health `/api/health`. Publish it through the host's HTTPS endpoint.
 
 ```bash
 docker build -t research-tool .
@@ -45,4 +47,4 @@ The tests start temporary local HTTP servers and check missing configuration, re
 
 ## Minimal Vercel build
 
-The only build inputs are root `package.json`/`package-lock.json`, `web/`, and `assets/`. The optional `api/` proxy and `vercel.json` supply online routing. `.vercelignore` keeps Rust builds, containers, tests, documentation, local databases and caches out of CLI uploads; those source files remain available in the repository for the persistent server. Both Vercel and the container build use the same root lockfile and commands.
+The only build inputs are root `package.json`/`package-lock.json`, `vite.config.mjs`, `web/`, and `assets/`. The optional `api/` proxy and `vercel.json` supply online routing. `.vercelignore` keeps Rust builds, containers, tests, documentation, local databases and caches out of CLI uploads; those source files remain available in the repository for the persistent server. Both Vercel and the container build use the same root lockfile and commands.

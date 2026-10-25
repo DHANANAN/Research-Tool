@@ -960,3 +960,63 @@ fn failed_organization_registration_does_not_leave_orphan_accounts() {
         0
     );
 }
+
+#[tokio::test]
+async fn readiness_checks_schema_and_recovery_revokes_sessions() {
+    let temp = tempfile::tempdir().unwrap();
+    let path = temp.path().join("recovery.sqlite3");
+    let state = db::initialize(
+        path.to_str().unwrap(),
+        Some(("admin", "correct horse battery staple", "Fictional admin")),
+        false,
+    )
+    .unwrap();
+    let app = api::router(state.clone());
+    assert_eq!(
+        request(&app, "GET", "/api/ready", json!({}), None).await.0,
+        StatusCode::OK
+    );
+    let cookie = login(&app).await;
+    let code = research_tool::recovery::recover(path.to_str().unwrap(), "admin").unwrap();
+    assert_eq!(
+        request(&app, "GET", "/api/bootstrap", json!({}), Some(&cookie))
+            .await
+            .0,
+        StatusCode::UNAUTHORIZED
+    );
+    assert_eq!(
+        request(
+            &app,
+            "POST",
+            "/api/auth/login",
+            json!({"login_id":"admin","password":"correct horse battery staple"}),
+            None
+        )
+        .await
+        .0,
+        StatusCode::UNAUTHORIZED
+    );
+    let input = json!({"login_id":"admin","activation_code":code,"password":"replacement fictional password"});
+    assert_eq!(
+        request(&app, "POST", "/api/auth/activate", input.clone(), None)
+            .await
+            .0,
+        StatusCode::OK
+    );
+    assert_eq!(
+        request(&app, "POST", "/api/auth/activate", input, None)
+            .await
+            .0,
+        StatusCode::UNAUTHORIZED
+    );
+    state
+        .db
+        .lock()
+        .unwrap()
+        .execute_batch("PRAGMA foreign_keys=OFF; DROP TABLE organizations")
+        .unwrap();
+    assert_eq!(
+        request(&app, "GET", "/api/ready", json!({}), None).await.0,
+        StatusCode::SERVICE_UNAVAILABLE
+    );
+}

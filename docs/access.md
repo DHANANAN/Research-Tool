@@ -41,7 +41,7 @@ The previous repository deployed a static frontend without a Vercel `/api` funct
 
 The repository now includes `vercel.json` and `api/proxy.js`. They route online API requests to a persistent Rust server. An unset connection produces an explanatory `503` JSON response and a playground option, rather than an unexplained HTML 404. Public Vercel responses could not be inspected from this development machine because its egress proxy rejected that domain, so a working public deployment is not claimed by local checks alone.
 
-For **researchtool-phi.vercel.app**, the deployment owner needs to:
+For **researchtool-chi.vercel.app**, the deployment owner needs to:
 
 1. Deploy this commit with Vercel's **Root Directory set to the repository root**, using the checked-in build configuration. A Vercel project configured to build only the `web` subdirectory does not include the root API function/configuration.
 2. Deploy the Rust service using the supplied Docker/persistent-disk configuration, or another persistent host.
@@ -50,3 +50,5 @@ For **researchtool-phi.vercel.app**, the deployment owner needs to:
 The public guest playground needs only the frontend deployment. Shared online account creation needs the second service. Full instructions, environment variables, storage requirements, and hosting cost notes are in [deployment.md](deployment.md).
 
 For a local Rust-server sandbox, `RESEARCH_DEMO_ACCOUNTS=true ./scripts/start.sh` opts into the same four public test profiles in a separately owned demonstration organization. Normal installation does not seed public accounts. Existing study data and account passwords are preserved; a conflicting real login ID is refused rather than reused.
+
+For a complete backend on your own computer, follow [Use your computer as the server](local-computer.md). Open its localhost portal rather than the Vercel site.

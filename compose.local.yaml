@@ -1,0 +1,15 @@
+# Complete app on your own computer. Open http://localhost:3000 after startup.
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${RESEARCH_LOCAL_PORT:-3000}:3000"
+    environment:
+      RESEARCH_BIND: 0.0.0.0:3000
+      RESEARCH_DB_PATH: /data/research.sqlite3
+      RESEARCH_SECURE_COOKIES: "false"
+    volumes:
+      - local-research-data:/data
+volumes:
+  local-research-data:

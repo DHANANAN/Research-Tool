@@ -23,6 +23,11 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Install PDF text extraction prerequisite
         run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends poppler-utils
+      - name: Validate local and HTTPS container configuration
+        run: |
+          docker compose -p research-tool-local -f compose.local.yaml config --quiet
+          RESEARCH_DOMAIN=research.example.org docker compose config --quiet
+          bash -n scripts/run-local.sh
       - name: Check Rust formatting
         run: cargo fmt --all -- --check
       - name: Check Rust warnings
@@ -37,6 +42,7 @@ jobs:
         run: |
           cargo build --locked
           python3 scripts/smoke.py
+          python3 scripts/database_test.py
           node --test api/proxy.test.cjs
       - uses: actions/setup-python@v5
         with:

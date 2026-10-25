@@ -125,6 +125,7 @@ fn bounded(value: &str, name: &str, max: usize) -> ApiResult<()> {
 pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/api/health", get(|| async { Json(json!({"ok":true})) }))
+        .route("/api/ready", get(ready))
         .route("/api/auth/login", post(login))
         .route("/api/auth/logout", post(logout))
         .route("/api/auth/activate", post(activate))
@@ -145,6 +146,7 @@ pub fn router(state: AppState) -> Router {
         .route("/api/responses", post(submit))
         .route("/api/projects/{id}/responses", get(responses))
         .route("/api/projects/{id}/export.xlsx", get(export))
+        .route("/api/projects/{id}/export.csv", get(export_csv))
         .route("/api/projects/{id}/import", post(import_text))
         .route("/api/projects/{id}/import-pdf", post(import_pdf))
         .route(
@@ -166,6 +168,64 @@ pub fn router(state: AppState) -> Router {
         .layer(DefaultBodyLimit::max(8 * 1024 * 1024))
         .layer(middleware::from_fn(protect))
         .with_state(state)
+}
+async fn ready(State(state): State<AppState>) -> ApiResult<Json<Value>> {
+    let db = lock(&state)?;
+    db.query_row("SELECT count(*) FROM organizations", [], |r| {
+        r.get::<_, i64>(0)
+    })
+    .map_err(|_| {
+        ApiError(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "Database is not ready.".into(),
+        )
+    })?;
+    Ok(Json(json!({"ok": true})))
+}
+async fn export_csv(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Query(query): Query<ExportQuery>,
+) -> ApiResult<Response> {
+    let u = user(&state, &headers)?;
+    let (forms, responses) = {
+        let db = lock(&state)?;
+        access(&db, &u, &id, true)?;
+        let mut forms = form_rows(&db, &id)?;
+        if let Some(fid) = &query.form_id {
+            if !forms.iter().any(|f| &f.id == fid) {
+                return Err(missing());
+            }
+            forms.retain(|f| &f.id == fid);
+        }
+        let responses = response_rows(&db, &id, None)?;
+        db::audit(&db, &u.id, &id, "export.csv", &id)?;
+        (forms, responses)
+    };
+    let permit = DOCUMENT_JOBS.try_acquire().map_err(|_| {
+        ApiError(
+            StatusCode::TOO_MANY_REQUESTS,
+            "Document processing is busy. Please retry shortly.".into(),
+        )
+    })?;
+    let bytes = tokio::task::spawn_blocking(move || {
+        let _permit = permit;
+        crate::export::build_csv(&forms, &responses)
+    })
+    .await
+    .map_err(|_| invalid("Export worker failed."))?;
+    Ok((
+        [
+            (header::CONTENT_TYPE, "text/csv; charset=utf-8"),
+            (
+                header::CONTENT_DISPOSITION,
+                "attachment; filename=research-answers.csv",
+            ),
+        ],
+        bytes,
+    )
+        .into_response())
 }
 async fn protect(req: Request, next: Next) -> Response {
     let api = req.uri().path().starts_with("/api/");

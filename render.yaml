@@ -5,7 +5,7 @@ services:
     name: research-tool
     runtime: docker
     plan: starter
-    healthCheckPath: /api/health
+    healthCheckPath: /api/ready
     envVars:
       - key: RESEARCH_BIND
         value: 0.0.0.0:3000

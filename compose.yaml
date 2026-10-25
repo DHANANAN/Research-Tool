@@ -1,0 +1,31 @@
+# Production on an existing Linux server: set RESEARCH_DOMAIN in .env first.
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      RESEARCH_BIND: 0.0.0.0:3000
+      RESEARCH_DB_PATH: /data/research.sqlite3
+      RESEARCH_SECURE_COOKIES: "true"
+    volumes:
+      - research-data:/data
+    expose:
+      - "3000"
+  https:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    environment:
+      RESEARCH_DOMAIN: ${RESEARCH_DOMAIN:?Set RESEARCH_DOMAIN to your public hostname}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+volumes:
+  research-data:
+  caddy-data:
+  caddy-config:

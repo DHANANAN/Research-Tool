@@ -4,6 +4,7 @@ pub mod db;
 pub mod export;
 pub mod import;
 pub mod models;
+pub mod recovery;
 pub mod validation;
 
 use rusqlite::Connection;
