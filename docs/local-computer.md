@@ -57,3 +57,17 @@ Use the printed private one-time code in **Activate account** to set a new passw
 The public Vercel site is a separate deployment. Setting its backend URL to `localhost` cannot reach your computer: localhost there means Vercel's own machine. Use the local portal for this installation. Its requests go directly to the local server under the same origin.
 
 The supplied local configuration binds only to this computer. Other devices cannot connect to it. Multi-device field collection needs an HTTPS address reachable by the surveyors, a computer/server kept awake and online, and appropriate network configuration. Use the [HTTPS server deployment](operations.md) when that is required. Browser PWA support varies; localhost is treated as a secure development origin by mainstream browsers.
+
+## Docker Desktop cannot start on Windows
+
+An error such as `Docker Desktop is unable to start` from `docker info` means the container engine is unavailable. The app has not reached its build or database startup. Older copies of the launcher may display `NativeCommandError` at line 6; the updated launcher reports the failed engine check directly.
+
+1. Open **Docker Desktop** from the Windows Start menu. Wait for its engine to be running before launching the research app. If it shows a specific error, retain that message.
+2. If Desktop fails to start, open **PowerShell as administrator** and run `wsl --update`. Restart Windows, open Docker Desktop, and try again.
+3. Check **Task Manager > Performance > CPU > Virtualization**. If it says Disabled, enable hardware virtualization in the computer's BIOS/UEFI using the manufacturer's instructions. Updating WSL cannot enable firmware virtualization.
+4. If it still fails, run `wsl --status` and `wsl --version` in PowerShell. These results, together with Docker Desktop's own error, identify the next repair. If WSL is missing, on supported Windows versions run `wsl --install --no-distribution` as administrator and restart; do this only when the diagnostics identify missing WSL components.
+5. In Docker Desktop settings, select **Use the WSL 2 based engine** and Linux containers. Run `docker info` again: it must show a Server section without an engine error before the app can start.
+
+Do not use Docker's factory reset or delete its storage as a first troubleshooting step: existing Docker volumes may contain retained data. The launcher does not change Windows features, firmware settings, or Docker storage automatically.
+
+The Windows launcher has been reviewed for PowerShell 5.1 native-command error handling but cannot be executed in this Linux development environment. Host-level Docker repairs must be verified on the affected PC.
