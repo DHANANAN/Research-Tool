@@ -1,5 +1,7 @@
 import { firebaseEnabled, shareQuestionnaire, publicQuestionnaire, submitPublicQuestionnaire } from "./firebase.js";
 import {WorkspacePreferences, ProfilePicture, ExtraAnswer} from './WorkspaceExtras.jsx';
+import {readDocument, documentSections} from './document-import.js';
+import GoldenMoment from './GoldenMoment.jsx';
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowDown,
@@ -67,6 +69,7 @@ const NAV = [
   ["collect", "Field collection", Smartphone],
   ["responses", "Responses & exports", BarChart3],
   ["team", "Research team", Users],
+  ["analytics", "Analysis dashboard", BarChart3],
   ["profile", "My profile", UserRound],
 ];
 const TYPES = [
@@ -174,7 +177,7 @@ function Notice({ children, tone = "info", className = "" }) {
 
 export default function Entry() {
   const survey = new URLSearchParams(location.search).get('survey');
-  return survey ? <PublicSurvey id={survey} /> : <App />;
+  return survey ? <PublicSurvey id={survey} /> : <><GoldenMoment /><App /></>;
 }
 function PublicSurvey({ id }) {
   const [form, setForm] = useState(null), [answers, setAnswers] = useState({}),
@@ -510,7 +513,7 @@ function App() {
   const project = boot.projects.find((p) => p.id === projectId),
     forms = boot.forms.filter((f) => f.project_id === projectId),
     admin = boot.user.role === "admin";
-  const navItems = NAV.filter(([key]) => admin || !["team"].includes(key));
+  const navItems = NAV.filter(([key]) => admin || !["team", "analytics"].includes(key));
   return (
     <div className="app-shell">
       <aside className={`sidebar ${mobileNav ? "open" : ""}`}>
@@ -550,6 +553,7 @@ function App() {
           ))}
         </nav>
         <div className="sidebar-bottom">
+          <WorkspacePreferences />
           <div className="field-note">
             <span>
               <Globe2 size={17} /> BUILT FOR THE FIELD
@@ -593,7 +597,7 @@ function App() {
             </button>
             <button
               className={`connection ${online ? "" : "offline"}`}
-              onClick={(event) => { sync(); if(event.detail === 3) notify(['Keep asking careful questions.','A thoughtful pause is part of good research.','Small observations can open large questions.'][Math.floor(Math.random()*3)]); }}
+              onClick={(event) => { sync(); if(event.detail === 3) window.dispatchEvent(new Event('research-golden-moment')); }}
               disabled={syncing}
               title="Upload pending responses"
             >
@@ -638,7 +642,6 @@ function App() {
           </div>
         </header>
         <main>
-          <WorkspacePreferences />
           {isDemoMode() && (
             <section className="playground-banner" aria-label="Playground mode">
               <div>
@@ -782,8 +785,10 @@ function App() {
               notify={notify}
               failStorage={failStorage}
             />
-          ) : screen === "responses" ? (
+          ) : ["responses", "analytics"].includes(screen) ? (
             <Responses
+              key={screen}
+              analysis={screen === 'analytics'}
               project={project}
               user={boot.user}
               forms={forms}
@@ -815,7 +820,7 @@ function App() {
           <span>Research-Tool · v1.0 · Open source</span>
           <span>
             <ShieldCheck size={13} />
-            Created & founded by <a href="https://www.linkedin.com/in/dhananjay-chouhan-30a51b334/" target="_blank" rel="noreferrer">Dhananjay Chouhan</a> · <a href="https://djlexfolio.tech" target="_blank" rel="noreferrer">Portfolio</a>
+            Created & founded by <a href="https://www.linkedin.com/in/dhananjay-chouhan-30a51b334/" target="_blank" rel="noreferrer">Dhananjay Chouhan</a> · <a href="https://djlexfolio.tech" target="_blank" rel="noreferrer">Visit for more advances & experiments</a>
           </span>
         </footer>
       </div>
@@ -1847,6 +1852,7 @@ function Forms({
               <span className="muted">
                 {form.status === "draft" ? "Unpublished" : "Version protected"}
               </span>
+              {admin && firebaseEnabled && !isDemoMode() && form.status === 'published' && <Button small variant="secondary" onClick={async()=>{try{const link=await shareQuestionnaire(form);window.prompt('Public questionnaire link — copy and share',link);}catch(error){notify(error.message,true);}}}>Share link</Button>}
             </div>
           </article>
         ))}
@@ -3242,7 +3248,7 @@ function displayAnswer(question, value) {
   return String(value);
 }
 
-function Responses({ project, user, forms, online, onExport, notify }) {
+function Responses({ project, user, forms, online, onExport, notify, analysis = false }) {
   const [responses, setResponses] = useState([]),
     [busy, setBusy] = useState(false),
     [selected, setSelected] = useState(null),
@@ -3272,7 +3278,7 @@ function Responses({ project, user, forms, online, onExport, notify }) {
     <>
       <PageHeading
         eyebrow="FROM ANSWERS TO INSIGHT"
-        title="Responses & exports"
+        title={analysis ? 'Analysis dashboard' : 'Responses & exports'}
         description={
           isDemoMode()
             ? "Playground responses stored in this browser, with question codes and form versions kept intact."
@@ -3306,8 +3312,8 @@ function Responses({ project, user, forms, online, onExport, notify }) {
           </Button>
         )}
       </PageHeading>
-      {shown.length > 0 && <section className="panel" style={{padding:22, marginBottom:22}}><h3>Response insights</h3>
-        {forms.filter(form=>!formFilter || form.id===formFilter).map(form=><details key={form.id}><summary>{form.title}</summary>
+      {admin && shown.length > 0 && <section className="panel" style={{padding:22, marginBottom:22}}><h3>Response insights</h3><p>{shown.length} submissions · {new Set(shown.map(r=>r.collector_id)).size} collectors · {new Set(shown.map(r=>r.form_id)).size} questionnaires. Choose a questionnaire below to inspect answer distributions and numeric means. Multiple-choice percentages may exceed 100%.</p>
+        {forms.filter(form=>!formFilter || form.id===formFilter).map(form=><details key={form.id} open={analysis}><summary>{form.title}</summary>
           {form.questions.filter(q=>['single','multiple','boolean','integer','decimal'].includes(q.kind)).map(q=>{
             const values=shown.filter(r=>r.form_id===form.id && r.statuses?.[q.id]==='answered').map(r=>r.answers[q.id]);
             if(!values.length)return null;
@@ -4271,7 +4277,7 @@ function InviteModal({ busy, onClose, onSave }) {
   );
 }
 function ImportModal({ project, onClose, onImported, notify }) {
-  const [mode, setMode] = useState("pdf"),
+  const [mode, setMode] = useState("document"),
     [text, setText] = useState(""),
     [file, setFile] = useState(null),
     [busy, setBusy] = useState(false),
@@ -4280,7 +4286,13 @@ function ImportModal({ project, onClose, onImported, notify }) {
     setBusy(true);
     try {
       let candidate;
-      if (mode === "pdf") {
+      if (mode === 'document') {
+        if (!file) throw new Error('Choose a DOCX or TXT document.');
+        setText(await readDocument(file));
+        setMode('text');
+        notify('Document extracted. Review the text; use a line containing === between separate questionnaires, then extract each section.');
+        return;
+      } else if (mode === "pdf") {
         if (!file) throw new Error("Choose a text-based PDF first.");
         if (file.size > 8 * 1024 * 1024)
           throw new Error(
@@ -4298,8 +4310,9 @@ function ImportModal({ project, onClose, onImported, notify }) {
           );
         candidate = await api(`/api/projects/${project.id}/import`, {
           method: "POST",
-          body: { text },
+          body: { text: documentSections(text)[0] || text },
         });
+        if (documentSections(text).length > 1) candidate.warnings = [...(candidate.warnings || []), 'Only the first questionnaire section is shown. Use Remaining questionnaire sections after opening this draft.'];
       }
       setResult(candidate);
     } catch (e) {
@@ -4317,6 +4330,7 @@ function ImportModal({ project, onClose, onImported, notify }) {
       {!result ? (
         <>
           <div className="tabs import-tabs">
+            <button className={mode === 'document' ? 'active' : ''} onClick={()=>{setMode('document');setFile(null);}}>Word / Google Docs</button>
             <button
               className={mode === "pdf" ? "active" : ""}
               onClick={() => setMode("pdf")}
@@ -4332,7 +4346,7 @@ function ImportModal({ project, onClose, onImported, notify }) {
               Paste questionnaire text
             </button>
           </div>
-          {mode === "pdf" ? (
+          {mode === 'document' ? <label className="upload-zone"><Upload size={29}/><strong>{file?.name || 'Choose DOCX or TXT'}</strong><span>Google Docs: download as .docx. Legacy .doc: save as .docx. Extracted text is reviewed before import.</span><input type="file" accept=".docx,.txt,.md" onChange={event=>setFile(event.target.files?.[0] || null)}/></label> : mode === "pdf" ? (
             <label className="upload-zone">
               <Upload size={29} />
               <strong>
@@ -4419,6 +4433,7 @@ function ImportModal({ project, onClose, onImported, notify }) {
             <Button variant="secondary" onClick={() => setResult(null)}>
               Try another document
             </Button>
+            {documentSections(text).length > 1 && <Button variant="secondary" onClick={()=>{setText(documentSections(text).slice(1).join('\n===\n'));setResult(null);setMode('text');}}>Remaining questionnaire sections</Button>}
             <Button icon={Settings2} onClick={() => onImported(result)}>
               Open editable draft
             </Button>

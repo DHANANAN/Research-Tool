@@ -4,7 +4,7 @@ export function WorkspacePreferences() {
   const [layout,setLayout]=useState(()=>localStorage.getItem('research-layout')||'left');
   const [activity,setActivity]=useState('active');
   const [install,setInstall]=useState(null);
-  useEffect(()=>{document.documentElement.dataset.layout=layout;localStorage.setItem('research-layout',layout);},[layout]);
+  useEffect(()=>{document.documentElement.dataset.layout='left';localStorage.setItem('research-layout','left');},[layout]);
   useEffect(()=>{
     let timer;
     const update=()=>{clearTimeout(timer);setActivity(document.hidden?'background':'active');if(!document.hidden)timer=setTimeout(()=>setActivity('idle'),60000);};
@@ -15,7 +15,7 @@ export function WorkspacePreferences() {
   },[]);
   useEffect(()=>{document.documentElement.dataset.activity=activity;},[activity]);
   return <div className="workspace-preferences"><span className="activity-light" title={`Workspace ${activity}`} aria-label={`Workspace ${activity}`} />
-    <label>Navigation<select aria-label="Navigation position" value={layout} onChange={e=>setLayout(e.target.value)}><option value="left">Left sidebar</option><option value="right">Right sidebar</option><option value="top">Top navigation</option><option value="hidden">Hide sidebar</option></select></label>
+    <span>Workspace activity</span>
     <button className="btn secondary" onClick={async()=>{if(install){await install.prompt();setInstall(null);}else alert('Install this app using your browser menu → Install app or Add to Home Screen. On iPhone: Share → Add to Home Screen.');}}>Install app shortcut</button>
   </div>;
 }
