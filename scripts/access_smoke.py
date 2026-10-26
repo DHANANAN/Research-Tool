@@ -50,6 +50,15 @@ def main():
                     page.get_by_label('Password', exact=True).fill(secrets.token_urlsafe(24))
                     page.locator('.auth-form').get_by_role('button', name='Create organization', exact=True).click()
                     expect(page.get_by_role('button', name='New study', exact=True)).to_be_visible()
+                    page.get_by_role('button', name='My profile', exact=True).click()
+                    expect(page.get_by_role('heading', name='My profile', exact=True)).to_be_visible()
+                    expect(page.get_by_text('Fictional Administrator', exact=True).first).to_be_visible()
+                    expect(page.get_by_text('Fictional online organization', exact=True)).to_be_visible()
+                    page.get_by_role('button', name='Use dark mode', exact=True).click()
+                    assert page.evaluate("document.documentElement.dataset.theme") == 'dark'
+                    page.reload()
+                    assert page.evaluate("document.documentElement.dataset.theme") == 'dark'
+                    page.get_by_role('button', name='Use light mode', exact=True).click()
                     payload = page.request.get(base + '/api/bootstrap').json()
                     assert payload['org']['name'] == 'Fictional online organization'
                     assert len(payload['forms']) == 15 and all(f['status'] == 'draft' for f in payload['forms'])
@@ -109,6 +118,10 @@ def main():
                         expect(page.locator('tbody tr')).to_have_count(0)
                     page.get_by_role('button', name='Sign out', exact=True).click()
                     sign_in('guest-admin')
+                    page.get_by_role('button', name='Research team', exact=True).click()
+                    expect(page.locator('.member-profile-card')).to_have_count(4)
+                    page.get_by_placeholder('Find by name, login ID, or role').fill('surveyor 2')
+                    expect(page.locator('.member-profile-card')).to_have_count(1)
                     page.get_by_role('button', name='Responses & exports', exact=True).click()
                     expect(page.locator('tbody tr')).to_have_count(1)
                     with page.expect_download() as downloading:
@@ -120,6 +133,9 @@ def main():
                         strings = [''.join(node.itertext()) for node in ET.fromstring(workbook.read('xl/sharedStrings.xml'))]
                         assert '=2+2' in strings
                         assert 'constructor' in strings
+                        assert 'What would make the service easier to use?' in strings
+                        assert 'Collector name' in strings
+                        assert 'q_comments__status' not in strings
                         rows = []
                         for filename in workbook.namelist():
                             if re.match(r'xl/worksheets/sheet\d+.xml$', filename):

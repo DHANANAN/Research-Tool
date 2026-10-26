@@ -777,9 +777,11 @@ export async function workbookFromSnapshot(snapshot) {
       "worksheet",
       "form_id",
       "version",
+      "export_column",
       "question_code",
       "wording",
       "type",
+      "required",
       "choice_code",
       "choice_label",
     ],
@@ -788,30 +790,38 @@ export async function workbookFromSnapshot(snapshot) {
     const name =
       snapshot.forms.length === 1 ? "Responses" : `Responses_${index + 1}`;
     const questions = form.questions.filter((q) => q.kind !== "section");
+    const labelCounts = questions.reduce((counts, question) => {
+      const label = question.label.trim() || question.id;
+      counts[label] = (counts[label] || 0) + 1;
+      return counts;
+    }, {});
+    const exportLabel = (question) => {
+      const label = question.label.trim() || question.id;
+      return labelCounts[label] > 1 ? `${label} [${question.id}]` : label;
+    };
     const headers = [
-      "__response_id",
-      "__form_id",
-      "__form_version",
-      "__collector_id",
-      "__collected_at_utc",
-      "__received_at_utc",
-      "__review_status",
+      "Response ID",
+      "Questionnaire",
+      "Questionnaire version",
+      "Collector name",
+      "Collector ID",
+      "Collected at (UTC)",
+      "Received at (UTC)",
+      "Review status",
     ];
     for (const q of questions) {
-      headers.push(
-        ...(q.kind === "multiple"
-          ? q.choices.map((c) => `${q.id}__${c.code}`)
-          : [q.id]),
-        `${q.id}__status`,
-      );
+      const column = exportLabel(q);
+      headers.push(column);
       for (const c of q.choices.length ? q.choices : [{ code: "", label: "" }])
         codebook.push([
           name,
           form.id,
           form.version,
+          column,
           q.id,
           q.label,
           q.kind,
+          q.required ? "yes" : "no",
           c.code,
           c.label,
         ]);
@@ -820,24 +830,40 @@ export async function workbookFromSnapshot(snapshot) {
     for (const r of snapshot.responses.filter((r) => r.form_id === form.id)) {
       const row = [
         r.id,
-        r.form_id,
+        form.title,
         r.form_version,
+        r.collector_name || "",
         r.collector_id,
         r.collected_at,
         r.received_at,
         r.review_status,
       ];
       for (const q of questions) {
-        const status = r.statuses[q.id],
+        const status = r.statuses?.[q.id] || "not_recorded",
           value = r.answers[q.id];
-        if (q.kind === "multiple")
+        if (status !== "answered") {
+          row.push(null);
+          continue;
+        }
+        if (q.kind === "multiple") {
+          const selected = Array.isArray(value) ? value : [];
           row.push(
-            ...q.choices.map((c) =>
-              status === "answered" ? (value.includes(c.code) ? 1 : 0) : null,
-            ),
+            selected
+              .map(
+                (code) =>
+                  q.choices.find((choice) => choice.code === code)?.label || code,
+              )
+              .join("; "),
           );
-        else row.push(status === "answered" ? value : null);
-        row.push(status);
+        } else if (q.kind === "single") {
+          row.push(
+            q.choices.find((choice) => choice.code === value)?.label || value,
+          );
+        } else if (q.kind === "boolean") {
+          row.push(value ? "Yes" : "No");
+        } else {
+          row.push(value);
+        }
       }
       rows.push(row);
     }
@@ -853,7 +879,7 @@ export async function workbookFromSnapshot(snapshot) {
       ["created_at_utc", now()],
       [
         "version_policy",
-        "Separate sheet per immutable questionnaire version; blanks have explicit status columns.",
+        "Each questionnaire version has one clean horizontal sheet: one response per row and one question per column. The Codebook maps readable columns to stable question and choice codes.",
       ],
     ]),
   );

@@ -30,6 +30,7 @@ import {
   MapPin,
   Menu,
   MoreHorizontal,
+  Moon,
   Plus,
   Radio,
   RefreshCw,
@@ -40,8 +41,10 @@ import {
   ShieldCheck,
   Smartphone,
   Sparkles,
+  Sun,
   Trash2,
   Upload,
+  UserRound,
   Users,
   Wifi,
   WifiOff,
@@ -63,6 +66,7 @@ const NAV = [
   ["collect", "Field collection", Smartphone],
   ["responses", "Responses & exports", BarChart3],
   ["team", "Research team", Users],
+  ["profile", "My profile", UserRound],
 ];
 const TYPES = [
   ["text", "Short text"],
@@ -102,6 +106,17 @@ const isEmpty = (value) =>
   (typeof value === "string" && !value.trim()) ||
   (Array.isArray(value) && !value.length);
 const deepCopy = (value) => JSON.parse(JSON.stringify(value));
+const initialTheme = () => {
+  try {
+    const saved = localStorage.getItem("research-tool-theme");
+    if (saved === "dark" || saved === "light") return saved;
+    return window.matchMedia?.("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  } catch {
+    return "light";
+  }
+};
 
 function Button({
   children,
@@ -157,7 +172,8 @@ function Notice({ children, tone = "info", className = "" }) {
 export default function App() {
   const [boot, setBoot] = useState(null),
     [loading, setLoading] = useState(true),
-    [screen, setScreen] = useState("overview");
+    [screen, setScreen] = useState("overview"),
+    [theme, setTheme] = useState(initialTheme);
   const [projectId, setProjectId] = useState(""),
     [online, setOnline] = useState(navigator.onLine),
     [offlineSession, setOfflineSession] = useState(false);
@@ -173,6 +189,15 @@ export default function App() {
   const syncLock = useRef(false),
     toastTimer = useRef(null),
     editorDirty = useRef(false);
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
+    try {
+      localStorage.setItem("research-tool-theme", theme);
+    } catch {
+      /* The visual preference can remain session-only. */
+    }
+  }, [theme]);
   const notify = useCallback((text, error = false) => {
     setMessage({ text, error });
     clearTimeout(toastTimer.current);
@@ -545,6 +570,14 @@ export default function App() {
           </div>
           <div className="topbar-right">
             <button
+              className="icon-btn theme-toggle"
+              aria-label={`Use ${theme === "dark" ? "light" : "dark"} mode`}
+              title={`Use ${theme === "dark" ? "light" : "dark"} mode`}
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            >
+              {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <button
               className={`connection ${online ? "" : "offline"}`}
               onClick={sync}
               disabled={syncing}
@@ -572,9 +605,14 @@ export default function App() {
               <strong>{boot.user.name}</strong>
               <span>{admin ? "Administrator" : "Field surveyor"}</span>
             </div>
-            <span className="avatar">
+            <button
+              className="avatar profile-trigger"
+              aria-label="Open my profile"
+              title="Open my profile"
+              onClick={() => navigate("profile")}
+            >
               {boot.user.name?.slice(0, 2).toUpperCase()}
-            </span>
+            </button>
             <button
               className="icon-btn"
               aria-label="Sign out"
@@ -738,9 +776,20 @@ export default function App() {
               onExport={doExport}
               notify={notify}
             />
+          ) : screen === "profile" ? (
+            <Profile
+              user={boot.user}
+              org={boot.org}
+              project={project}
+              projects={boot.projects}
+              stats={boot.stats}
+              admin={admin}
+              navigate={navigate}
+            />
           ) : (
             <Team
               project={project}
+              user={boot.user}
               online={online}
               notify={notify}
               refresh={refresh}
@@ -3397,8 +3446,95 @@ function Responses({ project, user, forms, online, onExport, notify }) {
   );
 }
 
-function Team({ project, online, notify, refresh }) {
+function Profile({ user, org, project, projects, stats, admin, navigate }) {
+  const roleName = admin ? "Administrator" : "Field surveyor";
+  return (
+    <>
+      <PageHeading
+        eyebrow="YOUR RESEARCH IDENTITY"
+        title="My profile"
+        description="A quick view of your account, organization, and current access."
+      />
+      <section className="profile-hero panel">
+        <span className="profile-avatar" aria-hidden="true">
+          {user.name?.slice(0, 2).toUpperCase()}
+        </span>
+        <div className="profile-identity">
+          <span className="eyebrow">SIGNED IN AS</span>
+          <h2>{user.name}</h2>
+          <p className="mono">{user.login_id}</p>
+          <span className={`badge ${admin ? "green" : "neutral"}`}>
+            {roleName}
+          </span>
+        </div>
+        <div className="profile-actions">
+          <Button
+            icon={admin ? Users : Smartphone}
+            onClick={() => navigate(admin ? "team" : "collect")}
+          >
+            {admin ? "View research team" : "Open field collection"}
+          </Button>
+        </div>
+      </section>
+      <div className="profile-grid">
+        <section className="panel profile-details">
+          <PanelHeading
+            title="Account details"
+            description="The identity attached to your research activity."
+          />
+          <dl>
+            <div>
+              <dt>Full name</dt>
+              <dd>{user.name}</dd>
+            </div>
+            <div>
+              <dt>Login ID</dt>
+              <dd className="mono">{user.login_id}</dd>
+            </div>
+            <div>
+              <dt>Organization</dt>
+              <dd>{org?.name || "Independent workspace"}</dd>
+            </div>
+            <div>
+              <dt>Current study</dt>
+              <dd>{project?.name || "No study selected"}</dd>
+            </div>
+          </dl>
+        </section>
+        <section className="panel profile-access">
+          <PanelHeading
+            title="Access summary"
+            description="What this account can do in the workspace."
+          />
+          <div className="profile-metrics">
+            <div>
+              <strong>{projects.length}</strong>
+              <span>Assigned {projects.length === 1 ? "study" : "studies"}</span>
+            </div>
+            <div>
+              <strong>{stats.responses ?? 0}</strong>
+              <span>{admin ? "Organization responses" : "My responses"}</span>
+            </div>
+            <div>
+              <strong>{admin ? stats.surveyors ?? 0 : "Field"}</strong>
+              <span>{admin ? "Field surveyors" : "Collection access"}</span>
+            </div>
+          </div>
+          <p className="profile-permission-note">
+            <ShieldCheck size={18} />
+            {admin
+              ? "You can manage questionnaires, team access, responses, and exports."
+              : "You can collect assigned questionnaires and review your own submissions."}
+          </p>
+        </section>
+      </div>
+    </>
+  );
+}
+
+function Team({ project, user, online, notify, refresh }) {
   const [members, setMembers] = useState([]),
+    [memberSearch, setMemberSearch] = useState(""),
     [inviteOpen, setInviteOpen] = useState(false),
     [invitation, setInvitation] = useState(null),
     [orgInvites, setOrgInvites] = useState([]),
@@ -3407,6 +3543,11 @@ function Team({ project, online, notify, refresh }) {
     [orgInviteCode, setOrgInviteCode] = useState(""),
     [creatingOrgInvite, setCreatingOrgInvite] = useState(false),
     [busy, setBusy] = useState(false);
+  const visibleMembers = members.filter((member) =>
+    `${member.name} ${member.login_id} ${member.role}`
+      .toLowerCase()
+      .includes(memberSearch.trim().toLowerCase()),
+  );
   const load = useCallback(async () => {
     if (!project || !navigator.onLine) return;
     try {
@@ -3812,32 +3953,52 @@ function Team({ project, online, notify, refresh }) {
           title="Project members"
           description={`${members.length} people with individual access to this study.`}
         />
+        {members.length > 3 && (
+          <label className="team-search">
+            <span className="sr-only">Find a team member</span>
+            <Search size={17} />
+            <input
+              value={memberSearch}
+              onChange={(event) => setMemberSearch(event.target.value)}
+              placeholder="Find by name, login ID, or role"
+            />
+          </label>
+        )}
         {members.length ? (
-          <div className="member-list">
-            {members.map((member) => (
-              <div className="member-row" key={member.id}>
+          visibleMembers.length ? (
+          <div className="member-profile-grid">
+            {visibleMembers.map((member) => (
+              <article className="member-profile-card" key={member.id}>
                 <span
-                  className={`avatar ${member.role === "admin" ? "" : "light"}`}
+                  className={`profile-avatar small ${member.role === "admin" ? "" : "light"}`}
                 >
                   {member.name.slice(0, 2).toUpperCase()}
                 </span>
-                <div>
+                <div className="member-profile-copy">
                   <strong>{member.name}</strong>
                   <span className="mono">{member.login_id}</span>
+                  {member.id === user.id && <em>You</em>}
                 </div>
                 <span
                   className={`badge ${member.role === "admin" ? "green" : "neutral"}`}
                 >
                   {member.role === "admin" ? "Administrator" : "Field surveyor"}
                 </span>
-                <span className="member-access">
+                <p className="member-access">
                   {member.role === "admin"
                     ? "Manage & export"
                     : "Collect project responses"}
-                </span>
-              </div>
+                </p>
+              </article>
             ))}
           </div>
+          ) : (
+            <Empty
+              icon={Search}
+              title="No matching team member"
+              description="Try a different name, login ID, or role."
+            />
+          )
         ) : (
           <Empty
             icon={Users}
