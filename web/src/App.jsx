@@ -1,4 +1,5 @@
 import { firebaseEnabled, shareQuestionnaire, publicQuestionnaire, submitPublicQuestionnaire } from "./firebase.js";
+import {WorkspacePreferences, ProfilePicture, ExtraAnswer} from './WorkspaceExtras.jsx';
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowDown,
@@ -69,6 +70,8 @@ const NAV = [
   ["profile", "My profile", UserRound],
 ];
 const TYPES = [
+  ['location', 'Optional GPS location'],
+  ['image', 'Photo / screenshot attachment'],
   ["text", "Short text"],
   ["long_text", "Long text / opinion"],
   ["integer", "Whole number / rating"],
@@ -558,7 +561,7 @@ function App() {
           </div>
           <div className="sidebar-footer">
             <span className="status-dot" />
-            Open source. Researcher owned.<span className="version">v0.1</span>
+            Open source. Researcher owned.<span className="version">v1.0</span>
           </div>
         </div>
       </aside>
@@ -590,7 +593,7 @@ function App() {
             </button>
             <button
               className={`connection ${online ? "" : "offline"}`}
-              onClick={sync}
+              onClick={(event) => { sync(); if(event.detail === 3) notify(['Keep asking careful questions.','A thoughtful pause is part of good research.','Small observations can open large questions.'][Math.floor(Math.random()*3)]); }}
               disabled={syncing}
               title="Upload pending responses"
             >
@@ -635,6 +638,7 @@ function App() {
           </div>
         </header>
         <main>
+          <WorkspacePreferences />
           {isDemoMode() && (
             <section className="playground-banner" aria-label="Playground mode">
               <div>
@@ -808,10 +812,10 @@ function App() {
           )}
         </main>
         <footer className="page-footer">
-          <span>Education should be free. Research data belongs to its researchers.</span>
+          <span>Research-Tool · v1.0 · Open source</span>
           <span>
             <ShieldCheck size={13} />
-            Open-source software · Created & founded by Dhananjay
+            Created & founded by <a href="https://www.linkedin.com/in/dhananjay-chouhan-30a51b334/" target="_blank" rel="noreferrer">Dhananjay Chouhan</a> · <a href="https://djlexfolio.tech" target="_blank" rel="noreferrer">Portfolio</a>
           </span>
         </footer>
       </div>
@@ -2300,6 +2304,8 @@ function FormEditor({
                     <small>Use letters, numbers, and single underscores.</small>
                   </label>
                 </div>
+                {question.kind === 'location' && <label>Study city / location (context only)<input value={question.study_area || ''} disabled={!editable} onChange={event=>editQuestion({study_area:event.target.value,required:false})}/><small>GPS stays optional and does not verify authenticity.</small></label>}
+                <label>Question illustration URL (optional)<input type="url" value={question.image_url || ''} disabled={!editable} placeholder="https://…" onChange={event=>editQuestion({image_url:event.target.value})}/><small>Use a public HTTPS image you have permission to share.</small></label>
                 {["single", "multiple"].includes(question.kind) && (
                   <div className="choice-editor">
                     <label>Answer options</label>
@@ -2590,7 +2596,8 @@ function FormQuestions({
                   {q.required && <b aria-label="required"> *</b>}
                 </strong>
               </label>
-              {["single", "multiple", "boolean"].includes(q.kind) ? (
+              {q.image_url?.startsWith('https://') && <img className="answer-image" src={q.image_url} alt={`Illustration: ${q.label}`} referrerPolicy="no-referrer" loading="lazy"/>}
+              {['location','image'].includes(q.kind) ? <ExtraAnswer question={q} value={current[q.id]} onChange={value=>change(q.id,value)} /> : ["single", "multiple", "boolean"].includes(q.kind) ? (
                 <fieldset
                   className={`answer-options ${q.kind === "boolean" ? "boolean-options" : ""}`}
                 >
@@ -3482,6 +3489,7 @@ function Profile({ user, org, project, projects, stats, admin, navigate }) {
         description="A quick view of your account, organization, and current access."
       />
       <section className="profile-hero panel">
+        <ProfilePicture user={user}/>
         <span className="profile-avatar" aria-hidden="true">
           {user.name?.slice(0, 2).toUpperCase()}
         </span>

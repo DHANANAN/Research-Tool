@@ -264,9 +264,12 @@ export function checkSchema(questions) {
         "single",
         "multiple",
         "section",
+        "location",
+        "image",
       ].includes(q.kind)
     )
       throw fail("Unsupported question type.");
+    if(q.kind === 'location' && q.required) throw fail('GPS must remain optional. Turn off Required for this question.');
     if (q.show_if && !seen.has(q.show_if.question_id))
       throw fail("Conditions must refer to earlier questions.");
     if (
@@ -321,6 +324,10 @@ export function validatedAnswers(form, input) {
       continue;
     }
     let valid = true;
+    if(q.kind === 'image') valid = typeof value === 'string' && value.length <= 18000 && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(value);
+    if(q.kind === 'location') {
+      try { const point=JSON.parse(value);valid=typeof point.latitude==='number' && typeof point.longitude==='number' && Math.abs(point.latitude)<=90 && Math.abs(point.longitude)<=180 && Number.isFinite(point.accuracy_m); } catch {valid=false;}
+    }
     if (["integer", "decimal"].includes(q.kind))
       valid =
         typeof value === "number" &&
