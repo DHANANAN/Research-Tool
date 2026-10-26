@@ -66,6 +66,26 @@ const fail = (message, status = 400) =>
 const id = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
 const clean = (v) => JSON.parse(JSON.stringify(v));
+export async function shareQuestionnaire(form) {
+  const user = await current();
+  if (user.role !== 'admin' || form.status !== 'published') throw fail('Publish the questionnaire before sharing.');
+  const stored = await read('forms', form.id);
+  await setDoc(ref('publicForms', form.id), stored);
+  return `${location.origin}/?survey=${encodeURIComponent(form.id)}`;
+}
+export async function publicQuestionnaire(fid) {
+  return read('publicForms', fid);
+}
+export async function submitPublicQuestionnaire(form, answers, responseId) {
+  const values = validatedAnswers(form, answers);
+  await setDoc(ref('responses', responseId), clean({
+    id: responseId, org_id: form.org_id, project_id: form.project_id,
+    form_id: form.id, form_version: form.version, collector_id: 'public',
+    collector_name: 'Online participant', collected_at: now(), received_at: now(),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    review_status: 'unreviewed', ...values,
+  }));
+}
 function ref(kind, key) {
   return doc(service().db, kind, key);
 }

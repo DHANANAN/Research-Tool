@@ -1,4 +1,4 @@
-import { firebaseEnabled } from "./firebase.js";
+import { firebaseEnabled, shareQuestionnaire, publicQuestionnaire, submitPublicQuestionnaire } from "./firebase.js";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowDown,
@@ -169,7 +169,18 @@ function Notice({ children, tone = "info", className = "" }) {
   );
 }
 
-export default function App() {
+export default function Entry() {
+  const survey = new URLSearchParams(location.search).get('survey');
+  return survey ? <PublicSurvey id={survey} /> : <App />;
+}
+function PublicSurvey({ id }) {
+  const [form, setForm] = useState(null), [answers, setAnswers] = useState({}),
+    [error, setError] = useState(''), [done, setDone] = useState(false), [busy, setBusy] = useState(false);
+  const responseId = useRef(crypto.randomUUID());
+  useEffect(() => { publicQuestionnaire(id).then(setForm).catch(() => setError('This questionnaire is unavailable or closed.')); }, [id]);
+  return <main className="public-survey"><Brand />{done ? <Empty title="Thank you for participating" description="Your response has been received." /> : form ? <section className="panel" style={{padding:24}}><h1>{form.title}</h1><p>{form.description}</p><Notice>Participation is voluntary. Submit only information you agree to share with the research team.</Notice><form onSubmit={async event => { event.preventDefault(); setBusy(true); setError(''); try { await submitPublicQuestionnaire(form, answers, responseId.current); setDone(true); } catch(e) { setError(e.message); } finally {setBusy(false);} }}><FormQuestions form={form} answers={answers} setAnswer={(key,value)=>setAnswers(previous=>({...previous,[key]:value}))} />{error && <Notice tone="danger">{error}</Notice>}<Button type="submit" disabled={busy}>{busy ? 'Submitting…' : 'Submit response'}</Button></form></section> : <p role="status">{error || 'Opening questionnaire…'}</p>}</main>;
+}
+function App() {
   const [boot, setBoot] = useState(null),
     [loading, setLoading] = useState(true),
     [screen, setScreen] = useState("overview"),
@@ -697,7 +708,7 @@ export default function App() {
               )}
               <span className="pilot-badge">
                 <span />
-                Development pilot
+                Research workspace
               </span>
             </div>
           </div>
@@ -797,10 +808,10 @@ export default function App() {
           )}
         </main>
         <footer className="page-footer">
-          <span>Thoughtful collection. Meaningful research.</span>
+          <span>Education should be free. Research data belongs to its researchers.</span>
           <span>
             <ShieldCheck size={13} />
-            Private study data · Open-source software
+            Open-source software · Created & founded by Dhananjay
           </span>
         </footer>
       </div>
@@ -1729,6 +1740,12 @@ function Forms({
         title="Questionnaire library"
         description="Build, review, and publish questionnaires that your field team can trust."
       >
+        {admin && firebaseEnabled && !isDemoMode() && <Button variant="secondary" onClick={async () => {
+          const published = forms.filter(form => form.status === 'published');
+          const chosen = published.length === 1 ? published[0] : published.find(form => form.id === window.prompt(published.map(form=>`${form.id} — ${form.title}`).join('\n') + '\nEnter questionnaire ID to share:'));
+          if (!chosen) { if (!published.length) notify('Publish a questionnaire first.'); return; }
+          try { const link = await shareQuestionnaire(chosen); window.prompt('Copy this public response link. Close the questionnaire to stop accepting responses.', link); } catch(error) {notify(error.message, true);}
+        }}>Share public form</Button>}
         {admin && (
           <>
             <Button
@@ -3282,6 +3299,15 @@ function Responses({ project, user, forms, online, onExport, notify }) {
           </Button>
         )}
       </PageHeading>
+      {shown.length > 0 && <section className="panel" style={{padding:22, marginBottom:22}}><h3>Response insights</h3>
+        {forms.filter(form=>!formFilter || form.id===formFilter).map(form=><details key={form.id}><summary>{form.title}</summary>
+          {form.questions.filter(q=>['single','multiple','boolean','integer','decimal'].includes(q.kind)).map(q=>{
+            const values=shown.filter(r=>r.form_id===form.id && r.statuses?.[q.id]==='answered').map(r=>r.answers[q.id]);
+            if(!values.length)return null;
+            const numeric=['integer','decimal'].includes(q.kind);
+            return <div key={q.id} style={{margin:'18px 0'}}><strong>{q.label}</strong><p>{values.length} answered{numeric?` · Mean ${(values.reduce((sum,v)=>sum+Number(v),0)/values.length).toFixed(2)}`:''}</p>{!numeric && (q.kind==='boolean'?[{code:true,label:'Yes'},{code:false,label:'No'}]:q.choices).map(c=>{const count=values.filter(v=>Array.isArray(v)?v.includes(c.code):v===c.code).length;return <div key={String(c.code)}><span>{c.label}: {count} ({Math.round(count/values.length*100)}%)</span><progress aria-label={c.label} value={count} max={values.length} style={{display:'block',width:'100%'}} /></div>;})}</div>;
+          })}</details>)}
+      </section>}
       <div className="response-summary">
         <div>
           <span className="document-icon green">

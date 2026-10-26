@@ -63,7 +63,22 @@ service cloud.firestore {
      || (resource.data.status == 'published' && request.resource.data.status == 'closed'
       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])));
   }
+  match /publicForms/{fid} {
+   allow get: if get(/databases/$(database)/documents/forms/$(fid)).data.status == 'published';
+   allow create, update: if admin(request.resource.data.org_id)
+    && request.resource.data == get(/databases/$(database)/documents/forms/$(fid)).data;
+   allow delete: if admin(resource.data.org_id);
+  }
   match /responses/{rid} {
+   allow create: if request.resource.data.keys().hasOnly(['id','org_id','project_id','form_id','form_version','collector_id','collector_name','collected_at','received_at','timezone','review_status','answers','statuses'])
+    && request.resource.data.id == rid && request.resource.data.collector_id == 'public'
+    && request.resource.data.collector_name == 'Online participant'
+    && request.resource.data.review_status == 'unreviewed'
+    && request.resource.data.answers is map && request.resource.data.statuses is map
+    && get(/databases/$(database)/documents/publicForms/$(request.resource.data.form_id)).data.org_id == request.resource.data.org_id
+    && get(/databases/$(database)/documents/publicForms/$(request.resource.data.form_id)).data.project_id == request.resource.data.project_id
+    && get(/databases/$(database)/documents/forms/$(request.resource.data.form_id)).data.status == 'published'
+    && get(/databases/$(database)/documents/forms/$(request.resource.data.form_id)).data.version == request.resource.data.form_version;
    allow get: if signed() && (!exists(/databases/$(database)/documents/responses/$(rid)) ||
     (member(resource.data.org_id) && (profile().role == 'admin' || resource.data.collector_id == request.auth.uid)));
    allow list: if member(resource.data.org_id) && (profile().role == 'admin' || resource.data.collector_id == request.auth.uid);

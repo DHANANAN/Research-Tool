@@ -6683,6 +6683,14 @@ p,
   font-size: 14px;
 }
 
+.public-survey { max-width: 860px; padding: 30px 20px; }
+.public-survey > .brand { margin-bottom: 24px; }
+[data-theme="dark"] .main-shell :is(p,small,label,span,td,th,dt,dd,h1,h2,h3,h4,strong),
+[data-theme="dark"] .modal :is(p,small,label,span,h2,strong) { color: #d5e1eb; }
+[data-theme="dark"] .main-shell :is(.study-hero,.choice-editor,.field-status,.bottom-callouts > div,.answer-option,.panel-bottom-note,.upload-zone,.import-result) { background: #1a2833; border-color: #405463; }
+[data-theme="dark"] .main-shell :is(.text-button,.hero-link) { color: #94cfff; }
+[data-theme="dark"] .main-shell .answer-option.selected { background: #25465e; }
+[data-theme="dark"] .main-shell :is(.tabs button.active,.outline-item.active) { background: #243746; color: #fff; }
 /* Personal workspace controls and team directory. */
 .theme-toggle {
   border: 1px solid #526779;
