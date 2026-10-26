@@ -2,6 +2,7 @@ import { firebaseEnabled, shareQuestionnaire, publicQuestionnaire, submitPublicQ
 import {WorkspacePreferences, ProfilePicture, ExtraAnswer} from './WorkspaceExtras.jsx';
 import {readDocument, documentSections} from './document-import.js';
 import GoldenMoment from './GoldenMoment.jsx';
+import ResponseChart from './ResponseChart.jsx';
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowDown,
@@ -542,6 +543,7 @@ function App() {
           {navItems.map(([key, title, Icon]) => (
             <button
               key={key}
+              title={title}
               className={`nav-item ${screen === key ? "active" : ""}`}
               onClick={() => navigate(key)}
             >
@@ -3311,8 +3313,7 @@ function Responses({ project, user, forms, online, onExport, notify, analysis = 
           {form.questions.filter(q=>['single','multiple','boolean','integer','decimal'].includes(q.kind)).map(q=>{
             const values=shown.filter(r=>r.form_id===form.id && r.statuses?.[q.id]==='answered').map(r=>r.answers[q.id]);
             if(!values.length)return null;
-            const numeric=['integer','decimal'].includes(q.kind);
-            return <div key={q.id} style={{margin:'18px 0'}}><strong>{q.label}</strong><p>{values.length} answered{numeric?` · Mean ${(values.reduce((sum,v)=>sum+Number(v),0)/values.length).toFixed(2)}`:''}</p>{!numeric && (q.kind==='boolean'?[{code:true,label:'Yes'},{code:false,label:'No'}]:q.choices).map(c=>{const count=values.filter(v=>Array.isArray(v)?v.includes(c.code):v===c.code).length;return <div key={String(c.code)}><span>{c.label}: {count} ({Math.round(count/values.length*100)}%)</span><progress aria-label={c.label} value={count} max={values.length} style={{display:'block',width:'100%'}} /></div>;})}</div>;
+            return <ResponseChart key={q.id} question={q} values={values}/>;
           })}</details>)}
       </section>}
       <div className="response-summary">

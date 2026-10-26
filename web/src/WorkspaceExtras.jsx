@@ -1,10 +1,13 @@
 import React, {useEffect, useState, useRef} from 'react';
+import {PanelLeftClose, PanelLeftOpen, ArrowLeftRight, PanelTop, Download} from 'lucide-react';
 
 export function WorkspacePreferences() {
   const [layout,setLayout]=useState(()=>localStorage.getItem('research-layout')||'left');
   const [activity,setActivity]=useState('active');
   const [install,setInstall]=useState(null);
-  useEffect(()=>{document.documentElement.dataset.layout=layout==='top'?'top':'left';localStorage.setItem('research-layout',layout);},[layout]);
+  const [collapsed,setCollapsed]=useState(()=>localStorage.getItem('research-nav-collapsed')==='true');
+  useEffect(()=>{document.documentElement.dataset.layout=layout;localStorage.setItem('research-layout',layout);},[layout]);
+  useEffect(()=>{document.documentElement.dataset.collapsed=String(collapsed);localStorage.setItem('research-nav-collapsed',String(collapsed));},[collapsed]);
   useEffect(()=>{
     let timer;
     const update=()=>{clearTimeout(timer);setActivity(document.hidden?'background':'active');if(!document.hidden)timer=setTimeout(()=>setActivity('idle'),60000);};
@@ -15,9 +18,10 @@ export function WorkspacePreferences() {
   },[]);
   useEffect(()=>{document.documentElement.dataset.activity=activity;},[activity]);
   return <div className="workspace-preferences"><span className="activity-light" title={`Workspace ${activity}`} aria-label={`Workspace ${activity}`} />
-    <span>Workspace activity</span>
-    <label>Navigation<select aria-label="Navigation layout" value={layout==='top'?'top':'left'} onChange={event=>setLayout(event.target.value)}><option value="left">Sidebar</option><option value="top">Top navigation</option></select></label>
-    <button className="btn secondary" onClick={async()=>{if(install){await install.prompt();setInstall(null);}else alert('Install this app using your browser menu → Install app or Add to Home Screen. On iPhone: Share → Add to Home Screen.');}}>Install app shortcut</button>
+    <button className="icon-btn nav-control" aria-label={collapsed?'Expand navigation':'Collapse navigation'} title={collapsed?'Expand navigation':'Collapse navigation'} onClick={()=>setCollapsed(!collapsed)}>{collapsed?<PanelLeftOpen size={19}/>:<PanelLeftClose size={19}/>}</button>
+    <button className="icon-btn nav-control" aria-label="Mirror sidebar" title="Move sidebar to the opposite side" onClick={()=>{setLayout(layout==='right'?'left':'right');}}><ArrowLeftRight size={19}/></button>
+    <button className="icon-btn nav-control" aria-label={layout==='top'?'Use sidebar':'Use top navigation'} title={layout==='top'?'Use sidebar':'Use top navigation'} onClick={()=>{setLayout(layout==='top'?'left':'top');setCollapsed(false);}}><PanelTop size={19}/></button>
+    <button className="icon-btn nav-control" aria-label="Install app shortcut" title="Install app shortcut" onClick={async()=>{if(install){await install.prompt();setInstall(null);}else alert('Install this app using your browser menu → Install app or Add to Home Screen. On iPhone: Share → Add to Home Screen.');}}><Download size={19}/></button>
   </div>;
 }
 
