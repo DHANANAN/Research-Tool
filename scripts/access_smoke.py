@@ -80,6 +80,15 @@ def main():
                     page.get_by_role('button', name=re.compile('^Guest administrator')).click()
                     expect(page.get_by_label('Playground mode')).to_be_visible()
                     assert float(page.evaluate("getComputedStyle(document.body).fontSize.replace('px','')")) >= 16
+                    page.get_by_label('Navigation layout').select_option('top')
+                    assert page.evaluate("document.documentElement.dataset.layout") == 'top'
+                    expect(page.get_by_role('button', name='Questionnaires', exact=True)).to_be_visible()
+                    page.reload()
+                    expect(page.get_by_label('Navigation layout')).to_have_value('top')
+                    page.get_by_label('Navigation layout').select_option('left')
+                    page.evaluate("window.dispatchEvent(new Event('research-golden-moment'))")
+                    expect(page.get_by_role('dialog', name='Golden quotation')).to_be_visible()
+                    page.get_by_role('button', name='Back to research').click()
                     page.get_by_role('button', name='Questionnaires', exact=True).click()
                     expect(page.locator('.questionnaire-card')).to_have_count(16)
                     page.get_by_role('button', name='New questionnaire', exact=True).click()

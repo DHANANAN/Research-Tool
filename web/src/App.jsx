@@ -565,7 +565,7 @@ function App() {
           </div>
           <div className="sidebar-footer">
             <span className="status-dot" />
-            Open source. Researcher owned.<span className="version">v1.0</span>
+            Open source. Researcher owned.<span className="version">v1.1</span>
           </div>
         </div>
       </aside>
@@ -623,14 +623,7 @@ function App() {
               <strong>{boot.user.name}</strong>
               <span>{admin ? "Administrator" : "Field surveyor"}</span>
             </div>
-            <button
-              className="avatar profile-trigger"
-              aria-label="Open my profile"
-              title="Open my profile"
-              onClick={() => navigate("profile")}
-            >
-              {boot.user.name?.slice(0, 2).toUpperCase()}
-            </button>
+            <ProfilePicture user={boot.user} compact />
             <button
               className="icon-btn"
               aria-label="Sign out"
@@ -817,7 +810,7 @@ function App() {
           )}
         </main>
         <footer className="page-footer">
-          <span>Research-Tool · v1.0 · Open source</span>
+          <span>Research-Tool · v1.1 · Open source</span>
           <span>
             <ShieldCheck size={13} />
             Created & founded by <a href="https://www.linkedin.com/in/dhananjay-chouhan-30a51b334/" target="_blank" rel="noreferrer">Dhananjay Chouhan</a> · <a href="https://djlexfolio.tech" target="_blank" rel="noreferrer">Visit for more advances & experiments</a>
@@ -1716,7 +1709,13 @@ function Forms({
 }) {
   const [search, setSearch] = useState(""),
     [filter, setFilter] = useState("all"),
-    [importOpen, setImportOpen] = useState(false);
+    [importOpen, setImportOpen] = useState(false),
+    [shared, setShared] = useState(null);
+  const share = async (form) => {
+    if(form.status !== 'published') {notify('Open Edit questionnaire, review it, and select Publish version. Then use Share questionnaire.');return;}
+    if(!firebaseEnabled || isDemoMode()) {notify('Public links require a signed-in Firebase cloud workspace. Playground records stay on this device.');return;}
+    try {setShared({title:form.title,link:await shareQuestionnaire(form)});}catch(error){notify(error.message,true);}
+  };
   const newForm = () =>
     onEdit({
       id: null,
@@ -1749,12 +1748,6 @@ function Forms({
         title="Questionnaire library"
         description="Build, review, and publish questionnaires that your field team can trust."
       >
-        {admin && firebaseEnabled && !isDemoMode() && <Button variant="secondary" onClick={async () => {
-          const published = forms.filter(form => form.status === 'published');
-          const chosen = published.length === 1 ? published[0] : published.find(form => form.id === window.prompt(published.map(form=>`${form.id} — ${form.title}`).join('\n') + '\nEnter questionnaire ID to share:'));
-          if (!chosen) { if (!published.length) notify('Publish a questionnaire first.'); return; }
-          try { const link = await shareQuestionnaire(chosen); window.prompt('Copy this public response link. Close the questionnaire to stop accepting responses.', link); } catch(error) {notify(error.message, true);}
-        }}>Share public form</Button>}
         {admin && (
           <>
             <Button
@@ -1852,7 +1845,7 @@ function Forms({
               <span className="muted">
                 {form.status === "draft" ? "Unpublished" : "Version protected"}
               </span>
-              {admin && firebaseEnabled && !isDemoMode() && form.status === 'published' && <Button small variant="secondary" onClick={async()=>{try{const link=await shareQuestionnaire(form);window.prompt('Public questionnaire link — copy and share',link);}catch(error){notify(error.message,true);}}}>Share link</Button>}
+              {admin && <Button small variant="secondary" onClick={()=>share(form)}>Share questionnaire</Button>}
             </div>
           </article>
         ))}
@@ -1885,6 +1878,7 @@ function Forms({
         research instruments. Check the protocol, consent wording, question
         types, and skip rules before publishing.
       </Notice>
+      {shared && <Modal title="Share questionnaire" onClose={()=>setShared(null)}><h3>{shared.title}</h3><p>Anyone with this link can respond without an account. Existing answers remain private. Close the questionnaire to stop collection.</p><label>Public response link<input readOnly value={shared.link} onFocus={event=>event.target.select()}/></label><div className="modal-actions"><Button variant="secondary" onClick={()=>window.open(shared.link,'_blank','noopener,noreferrer')}>Open form</Button><Button onClick={async()=>{try{await navigator.clipboard.writeText(shared.link);notify('Public response link copied.');}catch{notify('Select the response link and copy it manually.');}}}>Copy link</Button></div></Modal>}
       {importOpen && (
         <ImportModal
           project={project}
@@ -3496,9 +3490,6 @@ function Profile({ user, org, project, projects, stats, admin, navigate }) {
       />
       <section className="profile-hero panel">
         <ProfilePicture user={user}/>
-        <span className="profile-avatar" aria-hidden="true">
-          {user.name?.slice(0, 2).toUpperCase()}
-        </span>
         <div className="profile-identity">
           <span className="eyebrow">SIGNED IN AS</span>
           <h2>{user.name}</h2>

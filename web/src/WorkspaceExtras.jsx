@@ -1,10 +1,10 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useRef} from 'react';
 
 export function WorkspacePreferences() {
   const [layout,setLayout]=useState(()=>localStorage.getItem('research-layout')||'left');
   const [activity,setActivity]=useState('active');
   const [install,setInstall]=useState(null);
-  useEffect(()=>{document.documentElement.dataset.layout='left';localStorage.setItem('research-layout','left');},[layout]);
+  useEffect(()=>{document.documentElement.dataset.layout=layout==='top'?'top':'left';localStorage.setItem('research-layout',layout);},[layout]);
   useEffect(()=>{
     let timer;
     const update=()=>{clearTimeout(timer);setActivity(document.hidden?'background':'active');if(!document.hidden)timer=setTimeout(()=>setActivity('idle'),60000);};
@@ -16,14 +16,17 @@ export function WorkspacePreferences() {
   useEffect(()=>{document.documentElement.dataset.activity=activity;},[activity]);
   return <div className="workspace-preferences"><span className="activity-light" title={`Workspace ${activity}`} aria-label={`Workspace ${activity}`} />
     <span>Workspace activity</span>
+    <label>Navigation<select aria-label="Navigation layout" value={layout==='top'?'top':'left'} onChange={event=>setLayout(event.target.value)}><option value="left">Sidebar</option><option value="top">Top navigation</option></select></label>
     <button className="btn secondary" onClick={async()=>{if(install){await install.prompt();setInstall(null);}else alert('Install this app using your browser menu → Install app or Add to Home Screen. On iPhone: Share → Add to Home Screen.');}}>Install app shortcut</button>
   </div>;
 }
 
-export function ProfilePicture({user}) {
+export function ProfilePicture({user, compact=false}) {
   const key=`research-avatar-${user.id}`;
+  const input=useRef(null);
   const [picture,setPicture]=useState(()=>localStorage.getItem(key)||'');
-  return <label className="personal-picture">{picture && <img src={picture} alt="Your profile" />}Profile photo (this device)<input type="file" accept="image/*" onChange={async e=>{const file=e.target.files?.[0];if(!file)return;try{const data=await smallImage(file);localStorage.setItem(key,data);setPicture(data);}catch(error){alert(error.message);}}}/>{picture && <button type="button" onClick={()=>{localStorage.removeItem(key);setPicture('');}}>Remove photo</button>}</label>;
+  useEffect(()=>{const update=()=>setPicture(localStorage.getItem(key)||'');window.addEventListener('research-avatar-change',update);return()=>window.removeEventListener('research-avatar-change',update);},[key]);
+  return <div className={`avatar-upload ${compact?'compact':''}`}><button type="button" className="profile-avatar" aria-label="Upload or change profile picture" title="Upload or change profile picture (this device)" onClick={()=>input.current?.click()}>{picture?<img src={picture} alt={`${user.name} profile`}/>:user.name?.slice(0,2).toUpperCase()}</button><input ref={input} hidden type="file" accept="image/*" aria-label="Choose profile picture" onChange={async e=>{const file=e.target.files?.[0];if(!file)return;try{const data=await smallImage(file);localStorage.setItem(key,data);setPicture(data);window.dispatchEvent(new Event('research-avatar-change'));}catch(error){alert(error.message);}finally{e.target.value='';}}}/>{picture&&!compact&&<button type="button" className="text-button" onClick={()=>{localStorage.removeItem(key);setPicture('');window.dispatchEvent(new Event('research-avatar-change'));}}>Remove photo</button>}</div>;
 }
 export async function smallImage(file) {
   if(!file.type.startsWith('image/') || file.size>10000000)throw new Error('Choose an image smaller than 10 MB.');
