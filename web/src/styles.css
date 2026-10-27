@@ -6773,6 +6773,22 @@ main {padding-top:24px;}
 .chart-track > div {height:100%;min-width:0;}
 .chart-caption {font-size:12px!important;margin:16px 0 0;}
 @media(max-width:760px){[data-collapsed="true"]:not([data-layout="top"]) .main-shell,[data-collapsed="true"][data-layout="right"] .main-shell{margin:0;} .chart-row{font-size:13px;}.response-chart{padding:14px;}}
+/* Bookmark navigation is one horizontal strip; dock uses the same controls below. */
+[data-layout="top"] .sidebar {flex-wrap:nowrap;justify-content:flex-start;max-height:none;gap:10px;overflow-x:auto;}
+[data-layout="top"] .sidebar-brand {flex:0 0 auto;}
+[data-layout="top"] .sidebar-brand .brand {font-size:18px;}
+[data-layout="top"] .sidebar nav {flex-wrap:nowrap;flex:1 0 auto;}
+[data-layout="top"] .sidebar .sidebar-bottom {flex:0 0 auto;}
+[data-layout="top"] .sidebar .workspace-preferences {flex-wrap:nowrap;}
+[data-layout="top"] .sidebar .nav-item {white-space:nowrap;padding:10px;font-size:13px;}
+[data-layout="dock"] .sidebar {position:fixed;left:0;right:0;top:auto;bottom:0;width:100%;height:auto;max-height:35vh;z-index:90;padding:10px 16px;display:flex;gap:12px;align-items:center;overflow:auto;transform:none;visibility:visible;border-top:1px solid var(--border);}
+[data-layout="dock"] .sidebar :is(.sidebar-brand,.workspace-caption,.workspace-card,.nav-label,.field-note,.sidebar-footer){display:none;}
+[data-layout="dock"] .sidebar nav {display:flex;gap:6px;flex:1;}
+[data-layout="dock"] .sidebar .nav-item {width:auto;white-space:nowrap;}
+[data-layout="dock"] .sidebar-bottom {margin:0;flex-shrink:0;}
+[data-layout="dock"] .sidebar .workspace-preferences {margin:0;padding:0;border:0;flex-wrap:nowrap;}
+[data-layout="dock"] .main-shell {margin:0;padding-bottom:100px;}
+@media(max-width:760px){[data-layout="top"] .sidebar{max-height:none;}[data-layout="dock"] .sidebar .nav-item{padding:9px;}[data-layout="dock"] .sidebar nav{flex:0 0 auto;}}
 /* Theme surfaces and foregrounds are paired, including the signed-out route. */
 [data-theme="dark"] :is(.auth-form-area,.auth-page,.auth-form,.guest-entry,.guest-access,.guest-profile-grid,.auth-entry-heading,.auth-playground-toggle) {background:#15212b;color:#e7eef5;}
 [data-theme="dark"] .auth-form-area :is(h1,h2,h3,strong,label,p,small,span,code) {color:#e7eef5;}

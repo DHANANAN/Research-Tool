@@ -1,6 +1,6 @@
 import { firebaseEnabled, shareQuestionnaire, publicQuestionnaire, submitPublicQuestionnaire } from "./firebase.js";
 import {WorkspacePreferences, ProfilePicture, ExtraAnswer} from './WorkspaceExtras.jsx';
-import {readDocument, documentSections} from './document-import.js';
+import {readDocument, documentSections, parseQuestionnaires} from './document-import.js';
 import GoldenMoment from './GoldenMoment.jsx';
 import ResponseChart from './ResponseChart.jsx';
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -1748,7 +1748,7 @@ function Forms({
       <PageHeading
         eyebrow="ASK WITH INTENTION"
         title="Questionnaire library"
-        description="Build, review, and publish questionnaires that your field team can trust."
+        description="Import or build → review → Publish version → Share questionnaire → Copy link. Published cloud forms accept online responses without a participant account."
       >
         {admin && (
           <>
@@ -1884,6 +1884,7 @@ function Forms({
       {importOpen && (
         <ImportModal
           project={project}
+          onBatchCreated={refresh}
           notify={notify}
           onClose={() => setImportOpen(false)}
           onImported={(result) => {
@@ -4268,7 +4269,8 @@ function InviteModal({ busy, onClose, onSave }) {
     </Modal>
   );
 }
-function ImportModal({ project, onClose, onImported, notify }) {
+function ImportModal({ project, onClose, onImported, notify, onBatchCreated }) {
+  const [split,setSplit]=useState(false),[batch,setBatch]=useState([]),[created,setCreated]=useState([]);
   const [mode, setMode] = useState("document"),
     [text, setText] = useState(""),
     [file, setFile] = useState(null),
@@ -4300,11 +4302,8 @@ function ImportModal({ project, onClose, onImported, notify }) {
           throw new Error(
             "Paste questionnaire text to create a candidate draft.",
           );
-        candidate = await api(`/api/projects/${project.id}/import`, {
-          method: "POST",
-          body: { text: documentSections(text)[0] || text },
-        });
-        if (documentSections(text).length > 1) candidate.warnings = [...(candidate.warnings || []), 'Only the first questionnaire section is shown. Use Remaining questionnaire sections after opening this draft.'];
+        const candidates=parseQuestionnaires(text,split);
+        setBatch(candidates);setCreated([]);candidate=candidates[0];
       }
       setResult(candidate);
     } catch (e) {
@@ -4371,6 +4370,7 @@ function ImportModal({ project, onClose, onImported, notify }) {
             Unsupported material needs manual authoring. Source files are not
             automatically approved research instruments.
           </Notice>
+          <label className="check-label"><input type="checkbox" checked={split} onChange={event=>setSplit(event.target.checked)}/>Create separate drafts for document sections (otherwise keep one questionnaire)</label>
           <div className="modal-actions">
             <Button variant="secondary" onClick={onClose}>
               Cancel
@@ -4411,21 +4411,23 @@ function ImportModal({ project, onClose, onImported, notify }) {
             </div>
           )}
           <div className="import-question-list">
+            {batch.length>1 && <label>Preview questionnaire<select value={batch.indexOf(result)} onChange={event=>setResult(batch[Number(event.target.value)])}>{batch.map((item,index)=><option key={index} value={index}>{item.title} · {item.questions.filter(q=>q.kind!=='section').length} questions</option>)}</select></label>}
             {result.questions.map((q, i) => (
               <div key={i}>
                 <span>{String(i + 1).padStart(2, "0")}</span>
                 <p>{q.label}</p>
                 <small>
                   {TYPES.find((t) => t[0] === q.kind)?.[1] || q.kind}
+                  {q.choices.length>0 && ` · ${q.choices.map(choice=>choice.label).join(' / ')}`}
                 </small>
               </div>
             ))}
           </div>
           <div className="modal-actions">
+            {batch.length>0 && <Button disabled={busy || created.length===batch.length} onClick={async()=>{setBusy(true);try{for(let index=0;index<batch.length;index++){if(created.includes(index))continue;await api(`/api/projects/${project.id}/forms`,{method:'POST',body:{...batch[index],reviewed:false}});setCreated(previous=>[...previous,index]);}await onBatchCreated?.();notify(`${batch.length} questionnaire drafts created. Review and publish each one before sharing.`);onClose();}catch(error){notify(`Import stopped: ${error.message}. Created drafts are retained; retry continues remaining items.`,true);}finally{setBusy(false);}}}>{busy?'Creating drafts…':`Create ${batch.length} questionnaire draft${batch.length===1?'':'s'}`}</Button>}
             <Button variant="secondary" onClick={() => setResult(null)}>
               Try another document
             </Button>
-            {documentSections(text).length > 1 && <Button variant="secondary" onClick={()=>{setText(documentSections(text).slice(1).join('\n===\n'));setResult(null);setMode('text');}}>Remaining questionnaire sections</Button>}
             <Button icon={Settings2} onClick={() => onImported(result)}>
               Open editable draft
             </Button>

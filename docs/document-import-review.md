@@ -1,0 +1,9 @@
+# Structured document import
+
+Upload DOCX, extract the text, review it, then extract candidate questionnaires. Keep the section-splitting box off for one instrument, or enable it to create separate drafts for recognised section headings. The preview selector shows every candidate. **Create N questionnaire drafts** saves the complete batch; **Open editable draft** opens only the current preview. All items remain optional until a researcher reviews them. A partial save reports the error and retains successfully saved drafts; retry skips those already saved in the current modal.
+
+Validated against the supplied Indian Caste Inquiry document: one combined draft has 41 answer fields and 4 section headings. Split mode yields 4, 10, 10 and 17 answer fields across four drafts. Inline demographic choices, Yes/No choices, explicit 1–5 scales, percentage questions and qualitative sections are recognised. The trailing analysis/coding guide is excluded. This is a heuristic parser; inferred types and limits must be checked. No question is automatically approved, and oversized candidates fail visibly rather than truncating at 200.
+
+To collect online: open a saved draft, review the instrument, confirm review, and select Publish version. Return to Questionnaires and use **Share questionnaire → Copy link**. Open it in a private window and submit fictional answers before field use. Cloud sharing needs the previously deployed Firestore rules. Playground data cannot be publicly shared. Closing the original form stops new public submissions.
+
+Navigation: bookmark/top mode uses a single horizontal strip, with controls on the same strip. Dock mode places navigation and controls along the bottom and reserves space beneath the page content. Both may scroll horizontally on narrow displays so every control remains available.

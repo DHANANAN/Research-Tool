@@ -92,6 +92,10 @@ def main():
                     assert page.evaluate("document.documentElement.dataset.layout") == 'right'
                     page.get_by_role('button', name='Expand navigation', exact=True).click()
                     page.get_by_role('button', name='Mirror sidebar', exact=True).click()
+                    page.get_by_role('button', name='Use dock mode', exact=True).click()
+                    assert page.evaluate("document.documentElement.dataset.layout") == 'dock'
+                    expect(page.get_by_role('button', name='Questionnaires', exact=True)).to_be_visible()
+                    page.get_by_role('button', name='Leave dock mode', exact=True).click()
                     page.evaluate("window.dispatchEvent(new Event('research-golden-moment'))")
                     expect(page.get_by_role('dialog', name='Golden quotation')).to_be_visible()
                     page.get_by_role('button', name='Back to research').click()
@@ -102,6 +106,13 @@ def main():
                     page.get_by_role('checkbox', name='I have reviewed this questionnaire', exact=False).check()
                     page.get_by_role('button', name='Publish version', exact=True).click()
                     expect(page.locator('.questionnaire-card')).to_have_count(17)
+                    page.get_by_role('button', name='Import questionnaire', exact=True).click()
+                    page.get_by_role('button', name='Paste questionnaire text', exact=True).click()
+                    page.get_by_label('Questionnaire text', exact=True).fill('Import practice\n\nSection 1: Binary\n\nDo you use the service? [ Yes / No ]\n\nSection 2: Preferences\n\nPreferred mode: Online / In person')
+                    page.get_by_role('checkbox', name='Create separate drafts for document sections', exact=False).check()
+                    page.get_by_role('button', name='Extract candidate draft', exact=True).click()
+                    page.get_by_role('button', name='Create 2 questionnaire drafts', exact=True).click()
+                    expect(page.locator('.questionnaire-card')).to_have_count(19)
                     page.get_by_role('button', name='Sign out', exact=True).click()
 
                     def sign_in(login):
