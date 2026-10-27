@@ -3,6 +3,8 @@ import {WorkspacePreferences, ProfilePicture, ExtraAnswer} from './WorkspaceExtr
 import {readDocument, documentSections, parseQuestionnaires} from './document-import.js';
 import GoldenMoment from './GoldenMoment.jsx';
 import ResponseChart from './ResponseChart.jsx';
+import ParticipantGate from './ParticipantGate.jsx';
+import QuestionnaireOverview from './QuestionnaireOverview.jsx';
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowDown,
@@ -184,8 +186,9 @@ function PublicSurvey({ id }) {
   const [form, setForm] = useState(null), [answers, setAnswers] = useState({}),
     [error, setError] = useState(''), [done, setDone] = useState(false), [busy, setBusy] = useState(false);
   const responseId = useRef(crypto.randomUUID());
+  const identity = useRef('');
   useEffect(() => { publicQuestionnaire(id).then(setForm).catch(() => setError('This questionnaire is unavailable or closed.')); }, [id]);
-  return <main className="public-survey"><Brand />{done ? <Empty title="Thank you for participating" description="Your response has been received." /> : form ? <section className="panel" style={{padding:24}}><h1>{form.title}</h1><p>{form.description}</p><Notice>Participation is voluntary. Submit only information you agree to share with the research team.</Notice><form onSubmit={async event => { event.preventDefault(); setBusy(true); setError(''); try { await submitPublicQuestionnaire(form, answers, responseId.current); setDone(true); } catch(e) { setError(e.message); } finally {setBusy(false);} }}><FormQuestions form={form} answers={answers} setAnswer={(key,value)=>setAnswers(previous=>({...previous,[key]:value}))} />{error && <Notice tone="danger">{error}</Notice>}<Button type="submit" disabled={busy}>{busy ? 'Submitting…' : 'Submit response'}</Button></form></section> : <p role="status">{error || 'Opening questionnaire…'}</p>}</main>;
+  return <main className="public-survey"><Brand />{done ? <Empty title="Thank you for participating" description="Your response has been received." /> : form ? <section className="panel" style={{padding:24}}><h1>{form.title}</h1><p>{form.description}</p><Notice>Participation is voluntary. Submit only information you agree to share with the research team.</Notice><ParticipantGate onIdentity={value=>{identity.current=value;}}><form onSubmit={async event => { event.preventDefault(); setBusy(true); setError(''); try { await submitPublicQuestionnaire(form, answers, responseId.current, identity.current); setDone(true); } catch(e) { setError(e.message); } finally {setBusy(false);} }}><FormQuestions form={form} answers={answers} setAnswer={(key,value)=>setAnswers(previous=>({...previous,[key]:value}))} />{error && <Notice tone="danger">{error}</Notice>}<Button type="submit" disabled={busy}>{busy ? 'Submitting…' : 'Submit response'}</Button></form></ParticipantGate></section> : <p role="status">{error || 'Opening questionnaire…'}</p>}</main>;
 }
 function App() {
   const [boot, setBoot] = useState(null),
@@ -3246,6 +3249,7 @@ function displayAnswer(question, value) {
 }
 
 function Responses({ project, user, forms, online, onExport, notify, analysis = false }) {
+  const [collectorFilter,setCollectorFilter]=useState(''),[sort,setSort]=useState('newest'),[from,setFrom]=useState(''),[until,setUntil]=useState('');
   const [responses, setResponses] = useState([]),
     [busy, setBusy] = useState(false),
     [selected, setSelected] = useState(null),
@@ -3265,11 +3269,12 @@ function Responses({ project, user, forms, online, onExport, notify, analysis = 
     setResponses([]);
     setSelected(null);
     setFormFilter("");
+    setCollectorFilter('');setFrom('');setUntil('');setSort('newest');
     load();
   }, [load]);
   const shown = responses.filter(
-      (r) => !formFilter || r.form_id === formFilter,
-    ),
+      (r) => (!formFilter || r.form_id === formFilter) && (!collectorFilter||r.collector_id===collectorFilter) && (!from||(r.received_at||'').slice(0,10)>=from) && (!until||(r.received_at||'').slice(0,10)<=until),
+    ).sort((a,b)=>sort==='collector'?(a.collector_name||'').localeCompare(b.collector_name||''):sort==='oldest'?(a.received_at||'').localeCompare(b.received_at||''):(b.received_at||'').localeCompare(a.received_at||'')),
     admin = user.role === "admin";
   return (
     <>
@@ -3309,7 +3314,8 @@ function Responses({ project, user, forms, online, onExport, notify, analysis = 
           </Button>
         )}
       </PageHeading>
-      {admin && shown.length > 0 && <section className="panel" style={{padding:22, marginBottom:22}}><h3>Response insights</h3><p>{shown.length} submissions · {new Set(shown.map(r=>r.collector_id)).size} collectors · {new Set(shown.map(r=>r.form_id)).size} questionnaires. Choose a questionnaire below to inspect answer distributions and numeric means. Multiple-choice percentages may exceed 100%.</p>
+      {admin && analysis && shown.length>0 && <QuestionnaireOverview responses={shown} forms={forms}/>}
+      {admin && !analysis && shown.length > 0 && <section className="panel" style={{padding:22, marginBottom:22}}><h3>Response insights</h3><p>{shown.length} submissions · {new Set(shown.map(r=>r.collector_id)).size} collectors · {new Set(shown.map(r=>r.form_id)).size} questionnaires. Choose a questionnaire below to inspect answer distributions and numeric means. Multiple-choice percentages may exceed 100%.</p>
         {forms.filter(form=>!formFilter || form.id===formFilter).map(form=><details key={form.id} open={analysis}><summary>{form.title}</summary>
           {form.questions.filter(q=>['single','multiple','boolean','integer','decimal'].includes(q.kind)).map(q=>{
             const values=shown.filter(r=>r.form_id===form.id && r.statuses?.[q.id]==='answered').map(r=>r.answers[q.id]);
@@ -3362,6 +3368,10 @@ function Responses({ project, user, forms, online, onExport, notify, analysis = 
             ))}
           </select>
         </label>
+        <label>Field visitor<select aria-label="Filter collector" value={collectorFilter} onChange={event=>setCollectorFilter(event.target.value)}><option value="">All collectors</option>{[...new Map(responses.map(r=>[r.collector_id,r.collector_name||r.collector_id])).entries()].map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label>
+        <label>From (UTC)<input type="date" value={from} onChange={event=>setFrom(event.target.value)}/></label><label>Through (UTC)<input type="date" value={until} onChange={event=>setUntil(event.target.value)}/></label>
+        <label>Sort<select value={sort} onChange={event=>setSort(event.target.value)}><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="collector">Collector name</option></select></label>
+        <p className="muted">Date and collector filters affect this view and charts. Downloads include all responses for the selected questionnaire.</p>
       </div>
       <section className="panel response-table-panel">
         {!online ? (
@@ -3415,7 +3425,7 @@ function Responses({ project, user, forms, online, onExport, notify, analysis = 
                       </strong>
                       <small>Version {response.form_version}</small>
                     </td>
-                    <td>{response.collector_name || response.collector_id}</td>
+                    <td>{response.collector_name || response.collector_id}{response.participant_identifier && <small>{response.participant_identifier} (self-reported)</small>}</td>
                     <td>{fmtDate(response.received_at)}</td>
                     <td>
                       <span className="badge green">
@@ -4270,7 +4280,7 @@ function InviteModal({ busy, onClose, onSave }) {
   );
 }
 function ImportModal({ project, onClose, onImported, notify, onBatchCreated }) {
-  const [split,setSplit]=useState(false),[batch,setBatch]=useState([]),[created,setCreated]=useState([]);
+  const [split,setSplit]=useState(true),[batch,setBatch]=useState([]),[created,setCreated]=useState([]);
   const [mode, setMode] = useState("document"),
     [text, setText] = useState(""),
     [file, setFile] = useState(null),

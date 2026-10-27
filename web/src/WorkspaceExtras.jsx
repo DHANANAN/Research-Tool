@@ -9,12 +9,15 @@ export function WorkspacePreferences() {
   useEffect(()=>{document.documentElement.dataset.layout=layout;localStorage.setItem('research-layout',layout);},[layout]);
   useEffect(()=>{document.documentElement.dataset.collapsed=String(collapsed);localStorage.setItem('research-nav-collapsed',String(collapsed));},[collapsed]);
   useEffect(()=>{
-    let timer;
-    const update=()=>{clearTimeout(timer);setActivity(document.hidden?'background':'active');if(!document.hidden)timer=setTimeout(()=>setActivity('idle'),60000);};
+    let timer,redTimer;
+    const update=()=>{clearTimeout(timer);clearTimeout(redTimer);setActivity(document.hidden?'background':'active');if(!document.hidden){timer=setTimeout(()=>setActivity('idle'),30000);redTimer=setTimeout(()=>setActivity('background'),60000);}};
+    const palette=['#a5d6b2','#b6dfc0','#94cfa8','#c2e6cb'];
+    const leaf=()=>document.documentElement.style.setProperty('--leaf-pastel',palette[Math.floor(Math.random()*palette.length)]);
+    leaf();const leafTimer=setInterval(leaf,30000);
     const prompt=e=>{e.preventDefault();setInstall(e);};
     ['pointerdown','pointermove','keydown','visibilitychange'].forEach(name=>document.addEventListener(name,update));
     window.addEventListener('beforeinstallprompt',prompt);update();
-    return()=>{clearTimeout(timer);['pointerdown','pointermove','keydown','visibilitychange'].forEach(name=>document.removeEventListener(name,update));window.removeEventListener('beforeinstallprompt',prompt);};
+    return()=>{clearTimeout(timer);clearTimeout(redTimer);clearInterval(leafTimer);['pointerdown','pointermove','keydown','visibilitychange'].forEach(name=>document.removeEventListener(name,update));window.removeEventListener('beforeinstallprompt',prompt);};
   },[]);
   useEffect(()=>{document.documentElement.dataset.activity=activity;},[activity]);
   return <div className="workspace-preferences"><span className="activity-light" title={`Workspace ${activity}`} aria-label={`Workspace ${activity}`} />

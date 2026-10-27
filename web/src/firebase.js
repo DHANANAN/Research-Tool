@@ -76,12 +76,14 @@ export async function shareQuestionnaire(form) {
 export async function publicQuestionnaire(fid) {
   return read('publicForms', fid);
 }
-export async function submitPublicQuestionnaire(form, answers, responseId) {
+export async function submitPublicQuestionnaire(form, answers, responseId, participantIdentifier) {
+  if(typeof participantIdentifier!=='string'||!participantIdentifier.trim()||participantIdentifier.length>200)throw fail('Enter an email or mobile identifier before starting.');
   const values = validatedAnswers(form, answers);
   await setDoc(ref('responses', responseId), clean({
     id: responseId, org_id: form.org_id, project_id: form.project_id,
     form_id: form.id, form_version: form.version, collector_id: 'public',
     collector_name: 'Online participant', collected_at: now(), received_at: now(),
+    participant_identifier: participantIdentifier.trim(),
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     review_status: 'unreviewed', ...values,
   }));

@@ -13,7 +13,7 @@ export async function readDocument(file) {
 export function documentSections(text) {
   return text.split(/^\s*===+\s*$/m).map(part=>part.trim()).filter(Boolean);
 }
-export function parseQuestionnaires(text, split=false) {
+export function parseQuestionnaires(text, split=true) {
   if(text.length>200000) throw new Error('Split documents larger than 200,000 characters before importing.');
   const blocks=text.split(/\n\s*\n|\n(?=\s*(?:\d+[.)]|Section\s+\d+))/).map(value=>value.trim()).filter(Boolean);
   const title=blocks[0]?.replace(/^#+\s*/,'') || 'Imported questionnaire';
@@ -39,6 +39,10 @@ export function parseQuestionnaires(text, split=false) {
     group.questions.push({id:`q_import_${++counter}`,label,kind,choices,required:false,...extra});
   }
   push();
+  if(split && groups.length>1 && /Respondent Demographics/i.test(groups[0].title)) {
+    const demographics=groups.shift().questions;
+    groups.forEach(instrument=>{instrument.questions=[...demographics.map(question=>({...question})),...instrument.questions];});
+  }
   if(!groups.length)throw new Error('No question candidates found. Review the extracted text.');
   if(groups.some(group=>group.questions.length>200))throw new Error('More than 200 items in one instrument. Enable separate-section drafts or split the document. Nothing has been truncated.');
   return groups.map(group=>({...group,description:'Imported draft. Compare every item with the source before publication.',warnings:['All answers start optional. Review inferred types, options, consent and branching. Headings are preserved; the analysis guide is not a question.']}));

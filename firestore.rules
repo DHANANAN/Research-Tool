@@ -70,7 +70,10 @@ service cloud.firestore {
    allow delete: if admin(resource.data.org_id);
   }
   match /responses/{rid} {
-   allow create: if request.resource.data.keys().hasOnly(['id','org_id','project_id','form_id','form_version','collector_id','collector_name','collected_at','received_at','timezone','review_status','answers','statuses'])
+   allow create: if request.resource.data.keys().hasOnly(['id','org_id','project_id','form_id','form_version','collector_id','collector_name','collected_at','received_at','timezone','review_status','answers','statuses','participant_identifier'])
+    && request.resource.data.participant_identifier is string
+    && request.resource.data.participant_identifier.size() > 0
+    && request.resource.data.participant_identifier.size() <= 200
     && request.resource.data.id == rid && request.resource.data.collector_id == 'public'
     && request.resource.data.collector_name == 'Online participant'
     && request.resource.data.review_status == 'unreviewed'
