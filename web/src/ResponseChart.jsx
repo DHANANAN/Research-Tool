@@ -16,10 +16,11 @@ export default function ResponseChart({question,values}){
  }
  const total=data.reduce((sum,row)=>sum+row.count,0),maximum=Math.max(1,...data.map(row=>row.count));let end=0;
  const gradient=data.map((row,index)=>{const start=end;end+=total?row.count/total*100:0;return `${colors[index%colors.length]} ${start}% ${end}%`;}).join(',');
+ const varied=data.filter(row=>row.count>0).length>1;
  return <section className="response-chart"><div className="chart-heading"><h4>{question.label}</h4><div role="group" aria-label={`Chart type: ${question.label}`}><button type="button" className="btn secondary small" aria-pressed={view==='bar'} onClick={()=>setView('bar')}>{numeric?'Histogram':'Bars'}</button>{!numeric&&<button type="button" className="btn secondary small" aria-pressed={view==='pie'} onClick={()=>setView('pie')}>Pie</button>}</div></div>
  <p>{values.length} answered{numeric?` · Mean ${(values.reduce((sum,v)=>sum+v,0)/values.length).toFixed(2)} · Min ${Math.min(...values)} · Max ${Math.max(...values)}`:''}</p>
  <div className={`chart-content ${view}`}>
- {view==='pie'&&total>0&&<div className="chart-pie" role="img" aria-label={`${question.label}: ${data.map(row=>`${row.label}, ${row.count}`).join('; ')}`} style={{background:`conic-gradient(${gradient})`}}/>}
+ {view==='pie'&&total>0&&varied&&<div className="chart-pie" role="img" aria-label={`${question.label}: ${data.map(row=>`${row.label}, ${row.count}`).join('; ')}`} style={{background:`conic-gradient(${gradient})`}}/>}
  <div className="chart-legend">{data.map((row,index)=><div key={index} className="chart-row"><span className="chart-key" style={{background:colors[index%colors.length]}}/><span>{row.label}</span><strong>{row.count} · {Math.round(row.count/(values.length||1)*100)}%</strong>{view==='bar'&&<div className="chart-track"><div style={{width:`${row.count/maximum*100}%`,background:colors[index%colors.length]}}/></div>}</div>)}</div></div>
- <p className="chart-caption">{question.kind==='multiple'?'Percentages use respondents as the denominator. Pie slices show shares of selections; multiple answers per person are possible.':'Counts and percentages describe recorded answers only.'}</p></section>;
+ <p className="chart-caption">{!varied?'Only one observed category; shown as a summary rather than a solid pie. ':''}{question.kind==='multiple'?'Percentages use respondents as the denominator. Pie slices show shares of selections; multiple answers per person are possible.':'Counts and percentages describe recorded answers only.'}</p></section>;
 }

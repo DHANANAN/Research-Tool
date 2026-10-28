@@ -1,0 +1,18 @@
+import React from 'react';
+import ResponseChart from './ResponseChart.jsx';
+export default function AnswerInsights({responses,forms}) {
+ const instruments=forms.filter(form=>responses.some(response=>response.form_id===form.id));
+ return instruments.map(form=>{
+  const rows=responses.filter(response=>response.form_id===form.id);
+  const questions=form.questions.filter(q=>q.kind!=='section');
+  const summaries=questions.map(question=>{const values=rows.filter(row=>row.statuses?.[question.id]==='answered').map(row=>row.answers[question.id]);return {question,values,yes:values.filter(value=>value===true).length};});
+  const binary=summaries.filter(item=>item.question.kind==='boolean'&&item.values.length);
+  const answered=summaries.reduce((sum,item)=>sum+item.values.length,0);
+  return <section className="instrument-insights" key={form.id}><h3>{form.title} · v{form.version}</h3>
+   <div className="insight-metrics"><div><strong>{rows.length}</strong><span>Submissions</span></div><div><strong>{questions.length}</strong><span>Answer fields</span></div><div><strong>{answered}</strong><span>Recorded answers</span></div><div><strong>{new Set(rows.map(row=>row.collector_id)).size}</strong><span>Collectors</span></div></div>
+   {binary.length>0&&<section className="response-chart"><h4>Yes / No comparison across questions</h4><p>Percent of answered responses for each question. “Yes” is not necessarily a favourable opinion. Consent items are identified by their question wording and remain separate.</p>{binary.map(({question,values,yes})=><div className="binary-comparison" key={question.id}><span>{question.label}</span><div className="binary-stack" role="img" aria-label={`${question.label}: ${yes} yes, ${values.length-yes} no`}><div style={{width:`${yes/values.length*100}%`}}/><div style={{width:`${(values.length-yes)/values.length*100}%`}}/></div><strong>Yes {Math.round(yes/values.length*100)}% · No {Math.round((values.length-yes)/values.length*100)}% · n={values.length}</strong></div>)}<p>Green: Yes · Amber: No</p></section>}
+   <section className="panel"><div className="panel-heading"><h4>Key findings from recorded answers</h4></div><div className="table-scroll"><table><thead><tr><th>Question / topic</th><th>Answered</th><th>Observed result</th></tr></thead><tbody>{summaries.map(({question,values,yes})=>{let finding='No recorded answers';if(values.length){if(question.kind==='boolean')finding=`Yes: ${yes}/${values.length} (${Math.round(yes/values.length*100)}%)`;else if(['integer','decimal'].includes(question.kind))finding=`Mean ${(values.reduce((sum,value)=>sum+value,0)/values.length).toFixed(2)} · Range ${Math.min(...values)}–${Math.max(...values)}`;else if(['single','multiple'].includes(question.kind)){const counts=question.choices.map(choice=>({label:choice.label,count:values.filter(value=>Array.isArray(value)?value.includes(choice.code):value===choice.code).length}));const maximum=Math.max(...counts.map(item=>item.count));finding=counts.filter(item=>item.count===maximum).map(item=>`${item.label}: ${item.count}/${values.length}`).join('; ');}else finding='Free-text / attachment answers: review qualitatively';}return <tr key={question.id}><td className="finding-question">{question.label}</td><td>{values.length} / {rows.length}</td><td>{finding}</td></tr>;})}</tbody></table></div></section>
+   <details><summary>Explore individual answer distributions</summary><div className="overview-charts">{summaries.filter(item=>item.values.length&&['boolean','single','multiple','integer','decimal'].includes(item.question.kind)).map(({question,values})=><ResponseChart key={question.id} question={question} values={values}/>)}</div></details>
+  </section>;
+ });
+}

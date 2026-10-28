@@ -80,22 +80,25 @@ def main():
                     page.get_by_role('button', name=re.compile('^Guest administrator')).click()
                     expect(page.get_by_label('Playground mode')).to_be_visible()
                     assert float(page.evaluate("getComputedStyle(document.body).fontSize.replace('px','')")) >= 16
-                    page.get_by_role('button', name='Use top navigation', exact=True).click()
+                    page.get_by_role('button', name='Cycle navigation layout', exact=True).click()
                     assert page.evaluate("document.documentElement.dataset.layout") == 'top'
                     expect(page.get_by_role('button', name='Questionnaires', exact=True)).to_be_visible()
                     page.reload()
-                    expect(page.get_by_role('button', name='Use sidebar', exact=True)).to_be_visible()
-                    page.get_by_role('button', name='Use sidebar', exact=True).click()
+                    expect(page.get_by_role('button', name='Cycle navigation layout', exact=True)).to_be_visible()
+                    page.get_by_role('button', name='Cycle navigation layout', exact=True).click()
+                    assert page.evaluate("document.documentElement.dataset.layout") == 'dock'
+                    page.get_by_role('button', name='Cycle navigation layout', exact=True).click()
                     page.get_by_role('button', name='Collapse navigation', exact=True).click()
                     assert page.evaluate("document.documentElement.dataset.collapsed") == 'true'
                     page.get_by_role('button', name='Mirror sidebar', exact=True).click()
                     assert page.evaluate("document.documentElement.dataset.layout") == 'right'
                     page.get_by_role('button', name='Expand navigation', exact=True).click()
                     page.get_by_role('button', name='Mirror sidebar', exact=True).click()
-                    page.get_by_role('button', name='Use dock mode', exact=True).click()
+                    page.get_by_role('button', name='Cycle navigation layout', exact=True).click()
+                    page.get_by_role('button', name='Cycle navigation layout', exact=True).click()
                     assert page.evaluate("document.documentElement.dataset.layout") == 'dock'
                     expect(page.get_by_role('button', name='Questionnaires', exact=True)).to_be_visible()
-                    page.get_by_role('button', name='Leave dock mode', exact=True).click()
+                    page.get_by_role('button', name='Cycle navigation layout', exact=True).click()
                     page.evaluate("window.dispatchEvent(new Event('research-golden-moment'))")
                     expect(page.get_by_role('dialog', name='Golden quotation')).to_be_visible()
                     page.get_by_role('button', name='Back to research').click()
@@ -146,7 +149,8 @@ def main():
                     sign_in('guest-admin')
                     page.get_by_role('button', name='Analysis dashboard', exact=True).click()
                     expect(page.locator('.response-chart').first).to_be_visible()
-                    expect(page.locator('.chart-pie').first).to_be_visible()
+                    expect(page.get_by_role('heading', name='Yes / No comparison across questions')).to_be_visible()
+                    expect(page.get_by_role('heading', name='Key findings from recorded answers')).to_be_visible()
                     page.get_by_role('button', name='Bars', exact=True).first.click()
                     expect(page.locator('.chart-track').first).to_be_visible()
                     page.get_by_role('button', name='Research team', exact=True).click()
